@@ -925,60 +925,15 @@
             e.preventDefault();
             // Stash the event so it can be triggered later
             deferredPrompt = e;
-            // Show install button
-            showInstallButton();
+            // Notify listeners that install is available (Settings UI will react)
+            try { window.dispatchEvent(new CustomEvent('pwa-install-available')); } catch (err) {}
         });
 
         window.addEventListener('appinstalled', (evt) => {
             console.log('PWA: App was installed');
-            hideInstallButton();
             deferredPrompt = null;
+            try { window.dispatchEvent(new CustomEvent('pwa-installed')); } catch (err) {}
         });
-
-        function showInstallButton() {
-            // Create install button if it doesn't exist
-            if (!installButton) {
-                installButton = document.createElement('button');
-                installButton.id = 'pwa-install-btn';
-                installButton.className = 'btn btn-primary';
-                installButton.innerHTML = '📱 Install Flowbox';
-                installButton.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    z-index: 1000;
-                    background: #000;
-                    color: white;
-                    border: none;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                `;
-                
-                installButton.addEventListener('click', installApp);
-                installButton.addEventListener('mouseenter', () => {
-                    installButton.style.transform = 'translateY(-2px)';
-                    installButton.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.45)';
-                });
-                installButton.addEventListener('mouseleave', () => {
-                    installButton.style.transform = 'translateY(0)';
-                    installButton.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-                });
-                
-                document.body.appendChild(installButton);
-            }
-            installButton.style.display = 'block';
-        }
-
-        function hideInstallButton() {
-            if (installButton) {
-                installButton.style.display = 'none';
-            }
-        }
 
         function installApp() {
             if (deferredPrompt) {
@@ -1071,21 +1026,8 @@
         // Check if app is running in standalone mode (installed)
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             console.log('PWA: Running in standalone mode');
-            // Hide install button if already installed
-            hideInstallButton();
         }
 
-        // Show floating install button shortly after load on HTTPS when not installed.
-        // Clicking still only triggers the native browser prompt if available.
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-                const isSecure = window.location.protocol === 'https:';
-                if (!isStandalone && isSecure) {
-                    showInstallButton();
-                }
-            }, 1200);
-        });
 
         // Also hide install actions in Settings when running standalone
         document.addEventListener('DOMContentLoaded', () => {
@@ -1106,6 +1048,49 @@
             const statusIcon = document.querySelector('.status-icon');
             const saveToDeviceBtn = document.getElementById('saveToDeviceBtn');
             const loadFromDeviceBtn = document.getElementById('loadFromDeviceBtn');
+            const installInstructionsEl = document.getElementById('installInstructions');
+
+            // Simple browser/platform detection
+            function getBrowserInfo() {
+                const ua = navigator.userAgent || '';
+                const platform = navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || '';
+                const isMac = /Mac/i.test(platform) || /Macintosh/i.test(ua);
+                const isEdge = /Edg\//i.test(ua);
+                const isChrome = /Chrome\//i.test(ua) && !isEdge && !/OPR\//i.test(ua);
+                const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
+                return { isMac, isSafari, isChrome, isEdge };
+            }
+
+            function renderInstallInstructions() {
+                if (!installInstructionsEl) return;
+                const { isMac, isSafari, isChrome, isEdge } = getBrowserInfo();
+
+                if (isMac && isSafari) {
+                    installInstructionsEl.innerHTML = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">In Safari menu, open <strong>File → Add to Dock…</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Name it <strong>Flowbox</strong> and click <strong>Add</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Launch Flowbox from your Dock or Applications</span></div>
+                    `;
+                } else if (isMac && isChrome) {
+                    installInstructionsEl.innerHTML = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Click the <strong>Install</strong> icon in the address bar (if visible)</span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Or open <strong>⋮ → Install Flowbox</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Confirm to add the app, then open from Applications</span></div>
+                    `;
+                } else if (isMac && isEdge) {
+                    installInstructionsEl.innerHTML = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Open <strong>⋮ → Apps → Install this site as an app</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Confirm the install</span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Launch Flowbox from Applications or Dock</span></div>
+                    `;
+                } else {
+                    installInstructionsEl.innerHTML = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Use your browser menu to <strong>Install App</strong> or <strong>Add to Dock</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Confirm installation</span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Open Flowbox from your apps list</span></div>
+                    `;
+                }
+            }
 
             // Settings navigation
             settingsNavBtns.forEach(btn => {
@@ -1164,6 +1149,7 @@
             function updateInstallStatus() {
                 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
                 const canInstall = deferredPrompt !== null;
+                const { isMac, isSafari } = getBrowserInfo();
 
                 if (isStandalone) {
                     statusText.textContent = '✅ Installed and running as app';
@@ -1171,24 +1157,26 @@
                     statusText.className = 'status-text status-installed';
                     installAppBtn.style.display = 'none';
                     openAppBtn.style.display = 'inline-block';
-                } else if (canInstall) {
+                } else if (canInstall && !(isMac && isSafari)) {
                     statusText.textContent = '📱 Ready to install as app';
                     statusIcon.textContent = '📱';
                     statusText.className = 'status-text status-available';
                     installAppBtn.style.display = 'inline-block';
                     openAppBtn.style.display = 'none';
                 } else {
-                    statusText.textContent = 'ℹ️ Install requires HTTPS (or use instructions)';
+                    statusText.textContent = (isMac && isSafari) ? 'ℹ️ Use Safari → File → Add to Dock…' : 'ℹ️ Use browser menu to install';
                     statusIcon.textContent = 'ℹ️';
                     statusText.className = 'status-text';
                     // Keep install button visible to open instructions
-                    if (installAppBtn) installAppBtn.style.display = 'inline-block';
+                    if (installAppBtn) installAppBtn.style.display = (isMac && isSafari) ? 'none' : 'inline-block';
                     if (openAppBtn) openAppBtn.style.display = 'none';
                 }
+                renderInstallInstructions();
             }
 
             // Initial status check
             updateInstallStatus();
+            renderInstallInstructions();
 
             // Listen for install prompt events
             window.addEventListener('beforeinstallprompt', () => {
@@ -1196,6 +1184,10 @@
             });
 
             window.addEventListener('appinstalled', () => {
+                updateInstallStatus();
+            });
+
+            window.addEventListener('pwa-install-available', () => {
                 updateInstallStatus();
             });
 

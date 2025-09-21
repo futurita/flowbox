@@ -1,71 +1,27 @@
-# 📱 Flowbox App Installation Guide
+# 📱 Flowbox — Simple macOS Install
 
-## 🎯 What's New in Version 1.6
+This app supports quick installation on macOS. Use the steps for your browser.
 
-Your Flowbox application now includes a dedicated **App** section in Settings that makes it easy to install Flowbox as a native app on your Mac!
+## Safari (macOS)
+1. Open the app in Safari
+2. In the menu bar, select: File → Add to Dock…
+3. Name it “Flowbox” and click Add
+4. Launch Flowbox from your Dock or Applications
 
-## 🚀 How to Install Flowbox as a Mac App
+## Chrome (macOS)
+1. Open the app in Chrome
+2. Click the Install icon in the address bar, or open ⋮ → Install Flowbox
+3. Confirm the install
+4. Open Flowbox from Applications
 
-### Step 1: Open Settings
-1. Click the **Settings** button (⚙️) in the bottom-left corner of Flowbox
-2. Click on the **App** tab in the settings sidebar
+## Microsoft Edge (macOS)
+1. Open ⋮ → Apps → Install this site as an app
+2. Confirm the install
+3. Open Flowbox from Applications or Dock
 
-### Step 2: Install the App
-1. You'll see the installation status and a **"📱 Install Flowbox App"** button
-2. Click the install button
-3. Confirm the installation in the browser prompt
-4. Flowbox will be added to your Applications folder!
+## Notes
+- Works best over HTTPS
+- Your data stays local and is available offline
+- You can also trigger install from Settings → App when supported
 
-### Step 3: Launch Your App
-1. Find **Flowbox** in your Applications folder
-2. Double-click to launch it as a native Mac app
-3. Enjoy the app-like experience with no browser UI!
-
-## ✨ App Benefits
-
-When installed as a PWA, Flowbox provides:
-
-- **⚡ Faster Performance** - Cached resources load instantly
-- **🖥️ Native App Feel** - No browser address bar or tabs
-- **💾 Local Storage** - All your data stays on your Mac
-- **🔔 Native Notifications** - Get updates and alerts
-- **📱 Offline Access** - Works without internet connection
-- **🚀 Quick Launch** - Launch from Dock or Applications folder
-
-## 🔧 App Settings Features
-
-The new **App** section in Settings includes:
-
-- **Install Status** - Shows if the app is installed or ready to install
-- **Install Button** - One-click installation when available
-- **App Information** - Version, platform, and feature details
-- **Installation Instructions** - Step-by-step guide
-- **Benefits Overview** - Why install as an app
-
-## 🛠️ Troubleshooting
-
-### Install Button Not Showing
-- Make sure you're using **Chrome** or **Edge** browser
-- Ensure you're on **HTTPS** (use `npm run pwa` to start with HTTPS)
-- Try refreshing the page
-
-### App Not Appearing in Applications
-- Check your **Applications** folder
-- Look for **Flowbox** in the list
-- If not there, try the installation process again
-
-### Icons Not Loading
-- Open `generate-icons-simple.html` in your browser
-- Download all the generated icons to the `icons/` folder
-- Refresh the app
-
-## 🎉 You're All Set!
-
-Once installed, Flowbox will:
-- ✅ Appear in your Applications folder
-- ✅ Launch like any other Mac app
-- ✅ Work offline with all your data
-- ✅ Provide a native app experience
-- ✅ Keep all your projects and data secure locally
-
-Your Flowbox app is now a true Mac application! 🚀
+That’s it — a clean, native-like Flowbox on your Mac.
