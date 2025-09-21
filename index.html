@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#2196f3">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Flowbox">
     <meta name="apple-mobile-web-app-icon" content="icons/app_icon.svg">
     <meta name="msapplication-TileColor" content="#2196f3">
@@ -1076,6 +1076,15 @@
                     showInstallButton();
                 }
             }, 1500);
+        });
+
+        // Also hide install actions in Settings when running standalone
+        document.addEventListener('DOMContentLoaded', () => {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            if (isStandalone) {
+                const installSection = document.getElementById('installActions');
+                if (installSection) installSection.style.display = 'none';
+            }
         });
 
         // App Settings functionality

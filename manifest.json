@@ -4,6 +4,7 @@
   "description": "A comprehensive design process management tool for UX/UI designers",
   "start_url": "/flowbox/",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
   "background_color": "#ffffff",
   "theme_color": "#2196f3",
   "orientation": "any",
