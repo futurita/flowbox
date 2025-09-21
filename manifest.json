@@ -4,7 +4,7 @@
   "description": "A comprehensive design process management tool for UX/UI designers",
   "start_url": "./",
   "display": "standalone",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": ["window-controls-overlay", "standalone", "fullscreen"],
   "background_color": "#ffffff",
   "theme_color": "#2196f3",
   "orientation": "any",

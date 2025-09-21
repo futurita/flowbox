@@ -281,6 +281,25 @@
         }
     </style>
     
+    <!-- Window Controls Overlay (PWA) support -->
+    <style id="wco-styles">
+        :root { --wco-titlebar-height: env(titlebar-area-height, 0px); }
+        body.wco-enabled { padding-top: var(--wco-titlebar-height); }
+        .app-drag-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: var(--wco-titlebar-height);
+            background: transparent;
+            z-index: 2000;
+            -webkit-app-region: drag;
+            app-region: drag;
+            pointer-events: auto;
+        }
+        .no-drag { -webkit-app-region: no-drag; app-region: no-drag; }
+    </style>
+    
     <!-- Google Fonts for Thai support -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -291,6 +310,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
+    <!-- Drag region for installed PWA when using window-controls-overlay -->
+    <div id="appDragArea" class="app-drag-area" hidden></div>
+    <script>
+        (function() {
+            try {
+                var wco = navigator.windowControlsOverlay;
+                function updateWco() {
+                    var drag = document.getElementById('appDragArea');
+                    var visible = !!(wco && wco.visible);
+                    document.body.classList.toggle('wco-enabled', visible);
+                    if (drag) drag.hidden = !visible;
+                }
+                if (wco && wco.addEventListener) {
+                    wco.addEventListener('geometrychange', updateWco);
+                }
+                document.addEventListener('DOMContentLoaded', updateWco);
+                updateWco();
+            } catch (e) { /* no-op */ }
+        })();
+    </script>
     <script>
         // Early apply of persisted sidebar state to avoid flash on hard refresh
         (function() {
