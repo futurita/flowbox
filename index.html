@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Flowbox</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A comprehensive design process management tool for UX/UI designers">
+    <meta name="theme-color" content="#2196f3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Flowbox">
+    <meta name="msapplication-TileColor" content="#2196f3">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- PWA Manifest (only load if not using file:// protocol) -->
+    <script>
+        if (window.location.protocol !== 'file:') {
+            document.write('<link rel="manifest" href="./manifest.json">');
+        } else {
+            console.log('Running in file:// mode - PWA features disabled');
+        }
+    </script>
+    
+    <!-- Icons for different platforms -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-192x192.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css?v=1.4">
+    
+    <!-- Inline styles for color picker -->
+    <style>
+        .color-option.selected {
+            border-color: #2196f3 !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2) !important;
+            transform: scale(1.05) !important;
+        }
+        
+        .color-option:hover:not(.selected) {
+            border-color: #2196f3 !important;
+            transform: scale(1.05) !important;
+        }
+        
+        /* Pastel colors for stage cells */
+        .stage-cell.color-blue {
+            background: #B3E5FC !important;
+            color: #1565C0 !important;
+        }
+        
+        .stage-cell.color-green {
+            background: #C8E6C9 !important;
+            color: #2E7D32 !important;
+        }
+        
+        .stage-cell.color-orange {
+            background: #FFE0B2 !important;
+            color: #E65100 !important;
+        }
+        
+        .stage-cell.color-red {
+            background: #FFCDD2 !important;
+            color: #C62828 !important;
+        }
+        
+        .stage-cell.color-purple {
+            background: #E1BEE7 !important;
+            color: #7B1FA2 !important;
+        }
+        
+        /* Reduce height of stage of journey row */
+        .stage-cell {
+            min-height: 60px !important;
+            padding: 0.5rem !important;
+        }
+        
+        .row-label.stage {
+            min-height: 60px !important;
+            padding: 0.5rem !important;
+        }
+        
+        /* Image cell hover effects */
+        .image-cell {
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .image-cell:hover {
+            background: #f0f8ff !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+        }
+
+        .image-cell-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            text-align: center;
+            position: relative;
+        }
+
+
+        /* Add image indicator that appears on hover */
+        .image-cell::after {
+            content: '+ Add Image';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .image-cell:hover::after {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        /* Hide the indicator when there's already an image */
+        .image-cell.has-image::after {
+            display: none;
+        }
+        
+        /* App Settings Styles */
+        .install-status {
+            padding: 16px;
+            border-radius: 8px;
+            background: #f8f9ff;
+            border: 1px solid #e3f2fd;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .status-icon {
+            font-size: 24px;
+        }
+        
+        .status-text {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .benefits-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .benefit-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+        
+        .benefit-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .benefit-text {
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .install-instructions {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .instruction-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        
+        .step-number {
+            background: #ff9800;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .app-info {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .info-value {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .install-actions .btn {
+            margin-right: 8px;
+        }
+        
+        /* Status states */
+        .status-installed {
+            color: #4caf50;
+        }
+        
+        .status-available {
+            color: #2196f3;
+        }
+        
+        .status-checking {
+            color: #ff9800;
+        }
+    </style>
+    
+    <!-- Google Fonts for Thai support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Libraries for export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <script>
+        // Early apply of persisted sidebar state to avoid flash on hard refresh
+        (function() {
+            try {
+                var CURRENT_PROJECT_KEY = 'jmCurrentProjectId';
+                var BASE_SETTINGS_KEY = 'appSettings';
+                var pid = localStorage.getItem(CURRENT_PROJECT_KEY) || '';
+                if (!pid) {
+                    // If no current project yet, try to infer first project id
+                    var projects = JSON.parse(localStorage.getItem('jmProjects') || '[]');
+                    if (projects && projects.length) pid = projects[0].id || '';
+                }
+                if (!pid) return;
+                var raw = localStorage.getItem(BASE_SETTINGS_KEY + ':' + pid);
+                if (!raw) return;
+                var s = JSON.parse(raw);
+                var collapsed = !!(s && s.sidebarCollapsed);
+                // Only apply collapsed state if explicitly set, default to expanded
+                if (collapsed && s.sidebarCollapsed === true) {
+                    document.body.classList.add('sidebar-collapsed');
+                    document.body.style.setProperty('--sidebar-current-width', '0px');
+                } else {
+                    document.body.style.setProperty('--sidebar-current-width', '260px');
+                }
+            } catch (e) { /* no-op */ }
+        })();
+    </script>
+    <div class="app">
+        <!-- Expand button for collapsed sidebar -->
+        <button class="expand-sidebar-btn" id="expandSidebarBtn" title="Expand sidebar" aria-label="Expand sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M9 18l6-6-6-6" stroke="#2196f3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <aside class="sidebar" id="projectSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" title="Flowbox" aria-label="Flowbox">
+                    <img src="logo.svg" width="24" height="24" alt="Flowbox logo" />
+                </div>
+                <div class="sidebar-actions" style="display:flex; gap:0.5rem;">
+                <button class="btn btn-secondary icon-only" id="addProjectBtn" title="Add project" aria-label="Add project">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" stroke="#333" stroke-width="1.5" fill="none"/>
+                        <path d="M12 8v8M8 12h8" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary icon-only" id="toggleProjectSidebar" title="Collapse sidebar" aria-label="Collapse sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M7 4h2v16H7z" fill="#333"/>
+                        <path d="M14 8l-4 4 4 4" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                </div>
+            </div>
+            
+            <div class="project-list" id="projectList"></div>
+            <div class="sidebar-bottom" id="sidebarBottom">
+                <div class="profile-row">
+                    <div class="avatar" id="profileAvatar" aria-hidden="true">👤</div>
+                    <div class="profile-info">
+                        <div class="profile-name" id="profileName">You</div>
+                        <button class="status-toggle" id="settingsStatusBtn" aria-pressed="false" title="Toggle setting status">Status: Inactive</button>
+                    </div>
+                    <button class="btn btn-secondary icon-only" id="openSettingsBtn" title="Settings" aria-label="Open settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15.48 19a1.7 1.7 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9.5 19a1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 5 15.48 1.7 1.7 0 0 0 3.49 14H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 5 8.52a1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.52 5 1.7 1.7 0 0 0 10 3.49V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.48 5a1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19 8.52 1.7 1.7 0 0 0 20.51 10H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="bottom-storage" aria-label="Storage usage (quick)">
+                    <div class="storage-usage-bottom">
+                        <span class="storage-usage-text" id="storageUsageTextBottom">0 MB / 5 MB (0%)</span>
+                        <div class="storage-bar mini">
+                            <div class="storage-bar-fill" id="storageBarFillBottom" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <main class="main">
+        <div class="content">
+            <aside class="toc" id="rightPaneToc">
+                <nav class="toc-list">
+                    <div class="toc-header">
+                        <h2 class="project-name" id="projectNameHeading">Project Name</h2>
+                        <div class="toc-dropdown">
+                            <button class="btn btn-secondary icon-only" id="tocMenuBtn" title="Menu" aria-label="Menu">
+                                <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" fill="#333">
+                                    <circle cx="12" cy="5" r="2" />
+                                    <circle cx="12" cy="12" r="2" />
+                                    <circle cx="12" cy="19" r="2" />
+                                </svg>
+                            </button>
+                            <div class="toc-menu" id="tocMenu">
+                                <button class="toc-menu-item danger" id="tocDeleteProjectBtn">🗑️ Delete Project</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="toc-section">
+                        <button class="toc-item" data-target="cover">Cover</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Kick-off</div>
+                        <button class="toc-subitem" data-target="kickoff">design objective and scope and budget timeline</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Discovery</div>
+                        <button class="toc-subitem" data-target="stakeholders">stakeholder map</button>
+                        <button class="toc-subitem" data-target="personas">persona</button>
+                        <button class="toc-subitem" data-target="interviews">interview summary and resource</button>
+                        <button class="toc-subitem" data-target="competitors">competitor summary and resource</button>
+                        <button class="toc-subitem" data-target="service-blueprint">service blue print</button>
+                        <button class="toc-subitem" data-target="as-is-flow">as-is flow</button>
+                        <button class="toc-subitem" data-target="information-hierarchy">information hierarchy</button>
+                        <button class="toc-subitem" data-target="discovery-summary">discovery summary</button>
+                        <button class="toc-subitem active" data-target="journey">Journey Map</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Define</div>
+                        <button class="toc-subitem">Problem statements and Point-of-View (POV)</button>
+                        <button class="toc-subitem">How Might We (HMW)</button>
+                        <button class="toc-subitem">Design principles (decision guardrails)</button>
+                        <button class="toc-subitem">Value Proposition</button>
+                        <button class="toc-subitem">Design Success metric</button>
+                        <button class="toc-subitem">Prioritization</button>
+                        <button class="toc-subitem">Design Requirement</button>
+                        <button class="toc-subitem">To-be journey map</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Develop</div>
+                        <button class="toc-subitem">ideation link</button>
+                        <button class="toc-subitem">concept test report</button>
+                        <button class="toc-subitem">usability test report</button>
+                        <button class="toc-subitem" data-target="to-be-flow">to-be flow</button>
+                        <button class="toc-subitem">low fi link</button>
+                        <button class="toc-subitem">mid fi link</button>
+                        <button class="toc-subitem">hi-fi main flow link</button>
+                        <button class="toc-subitem">design system link</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Deliver</div>
+                        <button class="toc-subitem">final prototype link</button>
+                        <button class="toc-subitem">component change link</button>
+                        <button class="toc-subitem">uat test report</button>
+                        <button class="toc-subitem">Hypothesis and measure</button>
+                    </div>
+                    <div class="toc-section">
+                        <div class="toc-section-title">Closing</div>
+                        <button class="toc-subitem">Lesson learn</button>
+                        <button class="toc-subitem">references</button>
+                    </div>
+                </nav>
+            </aside>
+            <div class="content-body">
+        <!-- Table Controls - Outside journey container -->
+        <div id="contentNavMount"></div>
+
+        <div id="coverMount" style="display:none">
+            <div class="cover-container">
+                <!-- Background photo layer -->
+                <div class="cover-background" id="coverBackground"></div>
+                
+                <!-- Overlay for content readability -->
+                <div class="cover-overlay" id="coverOverlay"></div>
+                
+                <!-- Content layer -->
+                <div class="cover-content">
+                    <h1 class="cover-title" id="coverTitle" contenteditable="true">Your Project Title</h1>
+                    <p class="cover-description" id="coverDescription" contenteditable="true">Project description and overview</p>
+                </div>
+                
+                <!-- Control panel -->
+                <div class="cover-controls">
+                    <button class="cover-upload-btn" id="coverUploadBtn">
+                        📷 Upload Cover Photo
+                    </button>
+                    <div class="blur-control">
+                        <span>Blur:</span>
+                        <input type="range" class="blur-slider" id="blurSlider" min="0" max="20" value="0">
+                    </div>
+                    <button class="overlay-toggle" id="overlayToggle">
+                        🌙 Dark Overlay
+                    </button>
+                </div>
+                
+                <!-- Upload area (hidden by default) -->
+                <div class="cover-upload-area" id="coverUploadArea">
+                    <div class="cover-upload-icon">📁</div>
+                    <div class="cover-upload-text">Click to upload cover photo<br><small>or drag and drop</small></div>
+                </div>
+                
+                <!-- Hidden file input -->
+                <input type="file" id="coverFileInput" accept="image/*" style="display: none;">
+            </div>
+        </div>
+        <div id="journeyMount"></div>
+        <div id="flowMount" style="display:none"></div>
+        <div id="personasMount" style="display:none"></div>
+        <div id="informationHierarchyMount" style="display:none"></div>
+            </div>
+        </div>
+        </main>
+    </div>
+
+    <!-- Column Edit Modal -->
+    <div class="modal" id="columnModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Column</h3>
+                <button class="close-btn" id="closeColumnModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="columnForm">
+                    <div class="form-group">
+                        <label for="stageInput">Stage of Journey</label>
+                        <input type="text" id="stageInput" placeholder="Enter stage name">
+                    </div>
+                    <div class="form-group">
+                        <label>Stage Color</label>
+                        <div class="color-picker" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                            <label class="color-option color-none" title="No color" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="" checked style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e0e0e0; background: #fff;"></span>
+                            </label>
+                            <label class="color-option color-blue" title="Pastel Blue" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="blue" style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; background: #B3E5FC;"></span>
+                            </label>
+                            <label class="color-option color-green" title="Pastel Green" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="green" style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; background: #C8E6C9;"></span>
+                            </label>
+                            <label class="color-option color-orange" title="Pastel Orange" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="orange" style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; background: #FFE0B2;"></span>
+                            </label>
+                            <label class="color-option color-red" title="Pastel Red" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="red" style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; background: #FFCDD2;"></span>
+                            </label>
+                            <label class="color-option color-purple" title="Pastel Purple" style="display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                                <input type="radio" name="stageColor" value="purple" style="display: none;">
+                                <span class="color-preview" style="width: 30px; height: 30px; border-radius: 6px; background: #E1BEE7;"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="touchPointInput">Touch Point</label>
+                        <input type="text" id="touchPointInput" placeholder="Enter the touch point (e.g., website, app, person)">
+                    </div>
+                    <div class="form-group">
+                        <label for="activitiesInput">Activities</label>
+                        <textarea id="activitiesInput" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="feelingsInput">Feelings and Needs</label>
+                        <textarea id="feelingsInput" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="moodInput">Mood</label>
+                        <select id="moodInput" required>
+                            <option value="happy">😊 Happy</option>
+                            <option value="neutral">😐 Neutral</option>
+                            <option value="sad">😔 Sad</option>
+                            <option value="angry">😠 Angry</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunitiesInput">Potential Opportunities</label>
+                        <textarea id="opportunitiesInput" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="deleteColumnBtn">Delete</button>
+                    <button type="button" class="btn btn-secondary" id="cancelColumnEdit">Cancel</button>
+                    <button type="submit" class="btn btn-primary" form="columnForm">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>History & Versions</h3>
+                <button class="close-btn" id="closeHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <section style="margin-bottom: 1rem;">
+                    <h4>Saved Versions</h4>
+                    <div id="versionsList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                </section>
+            </div>
+            <div class="modal-footer">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeHistory">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Version Preview Modal -->
+    <div class="modal" id="versionPreviewModal">
+        <div class="modal-content" style="max-width: 700px; width: 90%;">
+            <div class="modal-header">
+                <h3>Version Loaded (Preview Mode)</h3>
+                <button class="close-btn" id="closeVersionPreview">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>You are viewing a version in preview mode. Your current data is not overwritten. Click Exit Preview to return to your current data.</p>
+            </div>
+            <div class="modal-footer">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeVersionPreviewBtn">Exit Preview</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal" aria-hidden="true">
+        <div class="modal-content settings-modal">
+            <div class="modal-header" style="border-bottom: 1px solid #222;">
+                <h3>Settings</h3>
+                <button class="close-btn" id="closeSettingsModal" aria-label="Close settings">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div class="settings-layout">
+                    <aside class="settings-sidebar">
+                        <button class="settings-nav-btn active" data-settings-section="general">General</button>
+                        <button class="settings-nav-btn" data-settings-section="app">App</button>
+                        <button class="settings-nav-btn" data-settings-section="interface" disabled title="Coming soon">Interface</button>
+                        <button class="settings-nav-btn" data-settings-section="personalization" disabled title="Coming soon">Personalization</button>
+                        <button class="settings-nav-btn" data-settings-section="audio" disabled title="Coming soon">Audio</button>
+                        <button class="settings-nav-btn" data-settings-section="chats" disabled title="Coming soon">Chats</button>
+                        <button class="settings-nav-btn" data-settings-section="account" disabled title="Coming soon">Account</button>
+                        <button class="settings-nav-btn" data-settings-section="about" disabled title="Coming soon">About</button>
+                    </aside>
+                    <section class="settings-content">
+                        <div class="settings-page" id="settingsPage-general">
+                            <h4 class="settings-head">WebUI Settings</h4>
+                            <div class="settings-item">
+                                <div class="settings-label">Theme</div>
+                                <div class="settings-control">
+                                    <select id="settingsThemeSelect">
+                                        <option value="light">Light</option>
+                                        <option value="dark">Dark</option>
+                                        <option value="oled-dark">OLED Dark</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <div class="settings-label">Language</div>
+                                <div class="settings-control">
+                                    <select id="settingsLanguageSelect">
+                                        <option value="en-US">English (US)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <div class="settings-label">Notifications</div>
+                                <div class="settings-control">
+                                    <button type="button" class="toggle" id="settingsNotificationsToggle" aria-pressed="false">Off</button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <div class="settings-label">System Prompt</div>
+                                <div class="settings-control">
+                                    <textarea id="settingsSystemPrompt" rows="3" placeholder="Enter system prompt here"></textarea>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <button class="advanced-toggle" id="advancedParamsToggle" aria-expanded="false">Advanced Parameters <span class="small">Show</span></button>
+                            </div>
+                            <div class="advanced-params" id="advancedParamsSection" hidden>
+                                <div class="form-group">
+                                    <label for="settingsMaxTokens">Max tokens</label>
+                                    <input type="number" id="settingsMaxTokens" min="0" placeholder="e.g. 1024">
+                                </div>
+                                <div class="form-group">
+                                    <label for="settingsTemperature">Temperature</label>
+                                    <input type="number" id="settingsTemperature" step="0.1" min="0" max="2" placeholder="e.g. 1.0">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- App Settings Page -->
+                        <div class="settings-page" id="settingsPage-app" style="display: none;">
+                            <h4 class="settings-head">App Installation</h4>
+                            
+                            <div class="settings-item">
+                                <div class="settings-label">Install as App</div>
+                                <div class="settings-control">
+                                    <div class="install-status" id="installStatus">
+                                        <div class="status-indicator" id="statusIndicator">
+                                            <span class="status-icon">📱</span>
+                                            <span class="status-text" id="statusText">Checking...</span>
+                                        </div>
+                                        <div class="install-actions" id="installActions" style="margin-top: 10px;">
+                                            <button class="btn btn-primary" id="installAppBtn" style="display: inline-block;">
+                                                📱 Install Flowbox App
+                                            </button>
+                                            <button class="btn btn-secondary" id="openAppBtn" style="display: none;">
+                                                🚀 Open as App
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-item">
+                                <div class="settings-label">App Benefits</div>
+                                <div class="settings-control">
+                                    <div class="benefits-list">
+                                        <div class="benefit-item">
+                                            <span class="benefit-icon">⚡</span>
+                                            <span class="benefit-text">Faster loading and offline access</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <span class="benefit-icon">🖥️</span>
+                                            <span class="benefit-text">Appears in your Applications folder</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <span class="benefit-icon">🔔</span>
+                                            <span class="benefit-text">Native notifications and updates</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <span class="benefit-icon">💾</span>
+                                            <span class="benefit-text">All your data stays local and secure</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-item">
+                                <div class="settings-label">Installation Instructions</div>
+                                <div class="settings-control">
+                                    <div class="install-instructions" id="installInstructions">
+                                        <div class="instruction-step">
+                                            <span class="step-number">1</span>
+                                            <span class="step-text">Click "Install Flowbox App" button above</span>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <span class="step-number">2</span>
+                                            <span class="step-text">Confirm installation in the browser prompt</span>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <span class="step-number">3</span>
+                                            <span class="step-text">Find Flowbox in your Applications folder</span>
+                                        </div>
+                                        <div class="instruction-step">
+                                            <span class="step-number">4</span>
+                                            <span class="step-text">Launch and enjoy your native app experience!</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-item">
+                                <div class="settings-label">App Information</div>
+                                <div class="settings-control">
+                                    <div class="app-info">
+                                        <div class="info-row">
+                                            <span class="info-label">Version:</span>
+                                            <span class="info-value">1.6.0</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Platform:</span>
+                                            <span class="info-value">Progressive Web App</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Storage:</span>
+                                            <span class="info-value">Local (Secure)</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Offline:</span>
+                                            <span class="info-value">✅ Supported</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-label">Device Storage</div>
+                                <div class="settings-control">
+                                    <div class="install-actions">
+                                        <button class="btn btn-secondary" id="saveToDeviceBtn">💾 Save to Device</button>
+                                        <button class="btn btn-secondary" id="loadFromDeviceBtn">📂 Load from Device</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <div class="modal-footer settings-save-bar">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelSettingsBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Creation Modal -->
+    <div class="modal" id="projectCreationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Project</h3>
+                <button class="close-btn" id="closeProjectCreationModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="projectCreationForm">
+                    <div class="form-group">
+                        <label for="projectNameInput">Project Name</label>
+                        <input type="text" id="projectNameInput" placeholder="Enter project name" required autofocus>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelProjectCreation">Cancel</button>
+                    <button type="submit" class="btn btn-primary" form="projectCreationForm">Create Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add/Edit Image</h3>
+                <button class="close-btn" id="closeImageModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="imageForm">
+                    <div class="form-group">
+                        <label for="imageFileInput">Upload Image</label>
+                        <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="file-upload-content">
+                                <div class="upload-icon">📁</div>
+                                <p>Click to select an image file</p>
+                                <small>Supports JPG, PNG, GIF, WebP (Max 5MB)</small>
+                            </div>
+                        </div>
+                        <div class="image-preview" id="imagePreview" style="display: none;">
+                            <img id="previewImg" alt="Preview">
+                            <button type="button" class="remove-image-btn" id="removeImageBtn">Remove</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelImageEdit">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveImage" disabled>Save Image</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="components.js?v=1.1"></script>
+    <script src="script.js?v=1.6"></script>
+    
+    <script>
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Only register service worker if not using file:// protocol
+                if (window.location.protocol !== 'file:') {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then((registration) => {
+                            console.log('SW registered: ', registration);
+                        
+                        // Actively check for a waiting worker and activate it
+                        if (registration.waiting) {
+                            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        }
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available, show update notification
+                                    showUpdateNotification();
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+                } else {
+                    console.log('Service Worker registration skipped for file:// protocol');
+                }
+            });
+        }
+
+        // Reload page when the new service worker takes control
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('SW controller changed; reloading to apply latest content');
+                window.location.reload();
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        let installButton;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA: Install prompt triggered');
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show install button
+            showInstallButton();
+        });
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA: App was installed');
+            hideInstallButton();
+            deferredPrompt = null;
+        });
+
+        function showInstallButton() {
+            // Create install button if it doesn't exist
+            if (!installButton) {
+                installButton = document.createElement('button');
+                installButton.id = 'pwa-install-btn';
+                installButton.className = 'btn btn-primary';
+                installButton.innerHTML = '📱 Install Flowbox';
+                installButton.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    background: #2196f3;
+                    color: white;
+                    border: none;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                `;
+                
+                installButton.addEventListener('click', installApp);
+                installButton.addEventListener('mouseenter', () => {
+                    installButton.style.transform = 'translateY(-2px)';
+                    installButton.style.boxShadow = '0 6px 16px rgba(33, 150, 243, 0.4)';
+                });
+                installButton.addEventListener('mouseleave', () => {
+                    installButton.style.transform = 'translateY(0)';
+                    installButton.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+                });
+                
+                document.body.appendChild(installButton);
+            }
+            installButton.style.display = 'block';
+        }
+
+        function hideInstallButton() {
+            if (installButton) {
+                installButton.style.display = 'none';
+            }
+        }
+
+        function installApp() {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA: User accepted the install prompt');
+                    } else {
+                        console.log('PWA: User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                    hideInstallButton();
+                });
+            }
+        }
+
+        function showUpdateNotification() {
+            // Create update notification
+            const updateNotification = document.createElement('div');
+            updateNotification.id = 'pwa-update-notification';
+            updateNotification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4caf50;
+                color: white;
+                padding: 16px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+                z-index: 1001;
+                max-width: 300px;
+                font-size: 14px;
+            `;
+            updateNotification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span>🔄 New version available!</span>
+                    <button id="update-btn" style="background: white; color: #4caf50; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Update</button>
+                    <button id="close-update-btn" style="background: transparent; color: white; border: none; cursor: pointer; font-size: 16px;">&times;</button>
+                </div>
+            `;
+            
+            document.body.appendChild(updateNotification);
+            
+            // Add event listeners
+            document.getElementById('update-btn').addEventListener('click', () => {
+                window.location.reload();
+            });
+            
+            document.getElementById('close-update-btn').addEventListener('click', () => {
+                updateNotification.remove();
+            });
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                if (updateNotification.parentNode) {
+                    updateNotification.remove();
+                }
+            }, 10000);
+        }
+
+        // Check if app is running in standalone mode (installed)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            console.log('PWA: Running in standalone mode');
+            // Hide install button if already installed
+            hideInstallButton();
+        }
+
+        // App Settings functionality
+        function setupAppSettings() {
+            const settingsNavBtns = document.querySelectorAll('.settings-nav-btn');
+            const settingsPages = document.querySelectorAll('.settings-page');
+            const installAppBtn = document.getElementById('installAppBtn');
+            const openAppBtn = document.getElementById('openAppBtn');
+            const statusText = document.getElementById('statusText');
+            const statusIcon = document.querySelector('.status-icon');
+            const saveToDeviceBtn = document.getElementById('saveToDeviceBtn');
+            const loadFromDeviceBtn = document.getElementById('loadFromDeviceBtn');
+
+            // Settings navigation
+            settingsNavBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const section = btn.getAttribute('data-settings-section');
+                    
+                    // Update active button
+                    settingsNavBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    // Show corresponding page
+                    settingsPages.forEach(page => {
+                        page.style.display = 'none';
+                    });
+                    
+                    const targetPage = document.getElementById(`settingsPage-${section}`);
+                    if (targetPage) {
+                        targetPage.style.display = 'block';
+                    }
+                });
+            });
+
+            // Install app button
+            if (installAppBtn) {
+                installAppBtn.addEventListener('click', () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('PWA: User accepted the install prompt from settings');
+                                updateInstallStatus();
+                            }
+                            deferredPrompt = null;
+                        });
+                    } else {
+                        // Fallback: show instructions modal
+                        const modal = document.getElementById('installInstructionsModal');
+                        if (modal) modal.classList.add('show');
+                    }
+                });
+            }
+
+            // Open app button (for when already installed)
+            if (openAppBtn) {
+                openAppBtn.addEventListener('click', () => {
+                    // Try to open in standalone mode
+                    window.open(window.location.href, '_blank');
+                });
+            }
+
+            // Device storage buttons
+            if (saveToDeviceBtn) {
+                saveToDeviceBtn.addEventListener('click', () => {
+                    if (window.flowboxExportAllAppDataToDevice) {
+                        window.flowboxExportAllAppDataToDevice();
+                    }
+                });
+            }
+
+            if (loadFromDeviceBtn) {
+                loadFromDeviceBtn.addEventListener('click', () => {
+                    if (window.flowboxImportAllAppDataFromDevice) {
+                        window.flowboxImportAllAppDataFromDevice();
+                    }
+                });
+            }
+
+            // Update install status
+            function updateInstallStatus() {
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+                const canInstall = deferredPrompt !== null;
+
+                if (isStandalone) {
+                    statusText.textContent = '✅ Installed and running as app';
+                    statusIcon.textContent = '✅';
+                    statusText.className = 'status-text status-installed';
+                    installAppBtn.style.display = 'none';
+                    openAppBtn.style.display = 'inline-block';
+                } else if (canInstall) {
+                    statusText.textContent = '📱 Ready to install as app';
+                    statusIcon.textContent = '📱';
+                    statusText.className = 'status-text status-available';
+                    installAppBtn.style.display = 'inline-block';
+                    openAppBtn.style.display = 'none';
+                } else {
+                    statusText.textContent = 'ℹ️ Install requires HTTPS (or use instructions)';
+                    statusIcon.textContent = 'ℹ️';
+                    statusText.className = 'status-text';
+                    // Keep install button visible to open instructions
+                    if (installAppBtn) installAppBtn.style.display = 'inline-block';
+                    if (openAppBtn) openAppBtn.style.display = 'none';
+                }
+            }
+
+            // Initial status check
+            updateInstallStatus();
+
+            // Listen for install prompt events
+            window.addEventListener('beforeinstallprompt', () => {
+                updateInstallStatus();
+            });
+
+            window.addEventListener('appinstalled', () => {
+                updateInstallStatus();
+            });
+
+            // Check status when App settings page is opened
+            const appNavBtn = document.querySelector('[data-settings-section="app"]');
+            if (appNavBtn) {
+                appNavBtn.addEventListener('click', () => {
+                    setTimeout(updateInstallStatus, 100);
+                });
+            }
+        }
+
+        // Initialize app settings when DOM is loaded
+        document.addEventListener('DOMContentLoaded', setupAppSettings);
+    </script>
+    
+    <!-- Inline script to ensure color picker works -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up color picker...');
+            
+            // Setup color picker functionality
+            function setupColorPicker() {
+                const colorOptions = document.querySelectorAll('.color-option');
+                console.log('Found color options:', colorOptions.length);
+                
+                colorOptions.forEach(option => {
+                    const radio = option.querySelector('input[type="radio"]');
+                    if (radio) {
+                        // Add click event to the label
+                        option.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            
+                            // Uncheck all radios
+                            document.querySelectorAll('input[name="stageColor"]').forEach(r => r.checked = false);
+                            
+                            // Check this radio
+                            radio.checked = true;
+                            
+                            // Remove selected class from all options
+                            colorOptions.forEach(opt => opt.classList.remove('selected'));
+                            
+                            // Add selected class to this option
+                            option.classList.add('selected');
+                            
+                            console.log('Selected color:', radio.value);
+                        });
+                        
+                        // Add hover effects
+                        option.addEventListener('mouseenter', function() {
+                            if (!option.classList.contains('selected')) {
+                                option.style.borderColor = '#2196f3';
+                                option.style.transform = 'scale(1.05)';
+                            }
+                        });
+                        
+                        option.addEventListener('mouseleave', function() {
+                            if (!option.classList.contains('selected')) {
+                                option.style.borderColor = '#e0e0e0';
+                                option.style.transform = 'scale(1)';
+                            }
+                        });
+                    }
+                });
+                
+                // Set initial selected state
+                const checkedRadio = document.querySelector('input[name="stageColor"]:checked');
+                if (checkedRadio) {
+                    checkedRadio.closest('.color-option').classList.add('selected');
+                }
+            }
+            
+            // Setup color picker when modal opens
+            const modal = document.getElementById('columnModal');
+            if (modal) {
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            if (modal.classList.contains('show')) {
+                                setTimeout(setupColorPicker, 100);
+                            }
+                        }
+                    });
+                });
+                observer.observe(modal, { attributes: true });
+            }
+            
+            // Also setup immediately in case modal is already open
+            setupColorPicker();
+        });
+    </script>
+</body>
+</html>

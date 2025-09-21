@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Fix - Create Icons</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .status { padding: 15px; margin: 10px 0; border-radius: 8px; background: #e3f2fd; border-left: 4px solid #2196f3; }
+        .download-btn { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+        .download-btn:hover { background: #1976d2; }
+        h1 { color: #2196f3; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Quick Fix - Create PWA Icons</h1>
+        
+        <div class="status">
+            <strong>🔧 Problem Found:</strong><br>
+            Your PWA is working but missing icon files. This is why the install button doesn't appear.
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="download-btn" onclick="createAllIcons()">📱 Create All Icons Now</button>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div class="status" id="instructions" style="display: none;">
+            <strong>📋 Next Steps:</strong><br>
+            1. Download all icons above<br>
+            2. Save them to your project's <code>icons/</code> folder<br>
+            3. Refresh your Flowbox app<br>
+            4. Go to Settings → App tab<br>
+            5. Install button should now appear!
+        </div>
+    </div>
+
+    <script>
+        const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#2196f3');
+            gradient.addColorStop(1, '#42a5f5');
+            
+            // Fill background
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add inner border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(2, size * 0.04);
+            ctx.strokeRect(size * 0.1, size * 0.1, size * 0.8, size * 0.8);
+            
+            // Add smile curve
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(2, size * 0.05);
+            ctx.beginPath();
+            ctx.arc(size * 0.5, size * 0.5, size * 0.25, 0, Math.PI);
+            ctx.stroke();
+            
+            // Add eyes
+            ctx.fillStyle = '#ffffff';
+            const eyeSize = Math.max(2, size * 0.04);
+            ctx.beginPath();
+            ctx.arc(size * 0.35, size * 0.4, eyeSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(size * 0.65, size * 0.4, eyeSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        function createAllIcons() {
+            const results = document.getElementById('results');
+            const instructions = document.getElementById('instructions');
+            
+            results.innerHTML = '<div class="status">Creating icons...</div>';
+            
+            iconSizes.forEach((size, index) => {
+                setTimeout(() => {
+                    const dataURL = createIcon(size);
+                    
+                    const iconDiv = document.createElement('div');
+                    iconDiv.style.cssText = 'margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;';
+                    iconDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <img src="${dataURL}" width="48" height="48" style="border-radius: 8px;">
+                            <div>
+                                <strong>icon-${size}x${size}.png</strong><br>
+                                <a href="${dataURL}" download="icon-${size}x${size}.png" class="download-btn">
+                                    📥 Download
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    
+                    results.appendChild(iconDiv);
+                    
+                    if (index === iconSizes.length - 1) {
+                        instructions.style.display = 'block';
+                        results.innerHTML = '<div class="status" style="background: #d4edda; border-left-color: #28a745;">✅ All icons created! Download them above.</div>' + results.innerHTML;
+                    }
+                }, index * 200);
+            });
+        }
+    </script>
+</body>
+</html>

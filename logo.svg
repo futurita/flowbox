@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Flowbox logo - short river on black">
+  <rect x="0" y="0" width="256" height="256" fill="#000000"/>
+  <!-- Shorter river: compact S-curve centered -->
+  <path d="M72 200 C 96 176, 112 164, 128 152 S 176 120, 184 96" fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
