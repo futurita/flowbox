@@ -3,8 +3,17 @@ name: Auto Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+
+# Allow the workflow to run on main branch and deploy to Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Ensure only one deployment runs at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -18,20 +27,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
         
     - name: Install dependencies
-      run: npm install
+      run: npm ci
       
     - name: Build and Deploy
       run: |
-        echo "Deploying to GitHub Pages..."
-        # Since this is a static HTML app, we just need to copy files
-        echo "Static app deployment completed"
+        echo "Deploying Flowbox to GitHub Pages..."
+        echo "Static HTML app - no build step needed"
+        echo "✅ Deployment ready"
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '.'
         
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      if: github.ref == 'refs/heads/main'
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./
-        cname: # Add your custom domain here if needed
+      id: deployment
+      uses: actions/deploy-pages@v4

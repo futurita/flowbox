@@ -1,0 +1,27 @@
+name: Auto-Merge and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Auto-merge notification
+      run: |
+        echo "✅ Auto-merge triggered for commit: ${{ github.sha }}"
+        echo "🚀 Flowbox update successfully merged to main branch"
+        echo "📅 Timestamp: $(date)"
+        echo "👤 Triggered by: ${{ github.actor }}"
+        
+    - name: Deploy notification
+      run: |
+        echo "🎯 Deployment process initiated"
+        echo "📦 Repository: ${{ github.repository }}"
+        echo "🌿 Branch: ${{ github.ref_name }}"
