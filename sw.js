@@ -158,8 +158,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New update available',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
+    icon: './icons/icon-192x192.png',
+    badge: './icons/icon-192x192.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -169,12 +169,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Open Flowbox',
-        icon: '/icons/icon-96x96.png'
+        icon: './icons/icon-192x192.png'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/icons/icon-96x96.png'
+        icon: './icons/icon-192x192.png'
       }
     ]
   };
