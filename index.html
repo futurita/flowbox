@@ -948,20 +948,99 @@
                         console.log('PWA: User dismissed the install prompt');
                     }
                     deferredPrompt = null;
-                    hideInstallButton();
                 });
             } else {
-                // Fallback: show instructions in Settings → App
+                // Fallback: show a simple helper modal with exact steps per browser on macOS
+                showInstallHelper();
+            }
+        }
+
+        function showInstallHelper() {
+            try {
+                // Basic detection
+                const ua = navigator.userAgent || '';
+                const platform = navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || '';
+                const isMac = /Mac/i.test(platform) || /Macintosh/i.test(ua);
+                const isEdge = /Edg\//i.test(ua);
+                const isChrome = /Chrome\//i.test(ua) && !isEdge && !/OPR\//i.test(ua);
+                const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
+                const isHttps = window.location.protocol === 'https:';
+
+                // Build instructions
+                let stepsHtml = '';
+                if (isMac && isSafari) {
+                    stepsHtml = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">In Safari menu, open <strong>File → Add to Dock…</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Name it <strong>Flowbox</strong> and click <strong>Add</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Launch Flowbox from your Dock or Applications</span></div>
+                    `;
+                } else if (isMac && isChrome) {
+                    stepsHtml = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Click the <strong>Install</strong> icon in the address bar (if visible)</span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Or open <strong>⋮ → Install Flowbox</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Confirm to add the app, then open from Applications</span></div>
+                    `;
+                } else if (isMac && isEdge) {
+                    stepsHtml = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Open <strong>⋮ → Apps → Install this site as an app</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Confirm the install</span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Launch Flowbox from Applications or Dock</span></div>
+                    `;
+                } else {
+                    stepsHtml = `
+                        <div class="instruction-step"><span class="step-number">1</span><span class="step-text">Use your browser menu to <strong>Install App</strong> or <strong>Add to Dock</strong></span></div>
+                        <div class="instruction-step"><span class="step-number">2</span><span class="step-text">Confirm installation</span></div>
+                        <div class="instruction-step"><span class="step-number">3</span><span class="step-text">Open Flowbox from your apps list</span></div>
+                    `;
+                }
+
+                // HTTPS hint for Chromium
+                const httpsHint = isHttps ? '' : '<div style="margin-top:8px;color:#a94442;font-size:12px;">Note: Install requires HTTPS.</div>';
+
+                // Create modal
+                let modal = document.getElementById('installHelperModal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'installHelperModal';
+                    modal.style.cssText = `
+                        position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2000; display: flex; align-items: center; justify-content: center;
+                    `;
+                    const box = document.createElement('div');
+                    box.style.cssText = `
+                        background: #fff; border-radius: 10px; width: min(480px, 92vw); padding: 16px 16px 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                    `;
+                    box.innerHTML = `
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <h4 style="margin:0; font-size:16px;">Install Flowbox</h4>
+                            <button id="installHelperClose" class="btn btn-secondary" style="padding:4px 8px;">Close</button>
+                        </div>
+                        <div class="install-instructions">${stepsHtml}</div>
+                        ${httpsHint}
+                        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                            <button id="installHelperRetry" class="btn btn-primary">Try Install Again</button>
+                        </div>
+                    `;
+                    modal.appendChild(box);
+                    document.body.appendChild(modal);
+
+                    document.getElementById('installHelperClose').addEventListener('click', () => modal.remove());
+                    document.getElementById('installHelperRetry').addEventListener('click', () => {
+                        modal.remove();
+                        // Re-attempt if prompt becomes available
+                        installApp();
+                    });
+                } else {
+                    modal.style.display = 'flex';
+                }
+
+                // Also open Settings → App and highlight the area
                 openAppInstallSettings();
-                try {
-                    const instructions = document.getElementById('installInstructions');
-                    if (instructions) {
-                        instructions.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        const prevBoxShadow = instructions.style.boxShadow;
-                        instructions.style.boxShadow = '0 0 0 3px #ffcc02';
-                        setTimeout(() => { instructions.style.boxShadow = prevBoxShadow || ''; }, 1800);
-                    }
-                } catch (e) { /* no-op */ }
+                const instructions = document.getElementById('installInstructions');
+                if (instructions) {
+                    instructions.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (e) {
+                // Silent
             }
         }
 
