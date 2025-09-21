@@ -2,13 +2,13 @@
   "name": "Flowbox - Design Process Management",
   "short_name": "Flowbox",
   "description": "A comprehensive design process management tool for UX/UI designers",
-  "start_url": "/flowbox/",
+  "start_url": "./",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone"],
   "background_color": "#ffffff",
   "theme_color": "#2196f3",
   "orientation": "any",
-  "scope": "/flowbox/",
+  "scope": "./",
   "lang": "en-US",
   "categories": ["productivity", "design", "business"],
   "icons": [
@@ -58,7 +58,7 @@
       "name": "New Project",
       "short_name": "New Project",
       "description": "Create a new design project",
-      "url": "/flowbox/?action=new-project",
+      "url": "./?action=new-project",
       "icons": [
         {
           "src": "./icons/icon-192x192.png",
@@ -71,7 +71,7 @@
       "name": "Journey Map",
       "short_name": "Journey",
       "description": "Open Journey Map",
-      "url": "/flowbox/?section=journey",
+      "url": "./?section=journey",
       "icons": [
         {
           "src": "./icons/icon-192x192.png",

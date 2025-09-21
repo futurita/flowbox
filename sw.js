@@ -1,7 +1,7 @@
 // Service Worker for Flowbox PWA
-const CACHE_NAME = 'flowbox-v1.6.4';
-const STATIC_CACHE_NAME = 'flowbox-static-v1.6.4';
-const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.4';
+const CACHE_NAME = 'flowbox-v1.6.5';
+const STATIC_CACHE_NAME = 'flowbox-static-v1.6.5';
+const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.5';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -14,6 +14,8 @@ const STATIC_FILES = [
   './manifest.json',
   './icons/app_icon.svg',
   './icons/app_icon.png',
+  './icons/icon-192x192.png',
+  './icons/icon-512x512.png',
   // External libraries
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
