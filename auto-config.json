@@ -1,0 +1,34 @@
+{
+  "autoPush": {
+    "enabled": true,
+    "branch": "main",
+    "remote": "origin",
+    "debounceDelay": 2000,
+    "commitMessage": "Auto-commit: {count} file(s) changed at {timestamp}",
+    "ignoredFiles": [
+      "node_modules/**",
+      ".git/**",
+      ".github/**",
+      ".DS_Store",
+      ".vscode/**",
+      ".idea/**",
+      "*.log",
+      "*.tmp",
+      "*.temp",
+      "auto-push.js",
+      "watch-changes.js",
+      "auto-config.json"
+    ]
+  },
+  "github": {
+    "repository": "futurita/flowbox",
+    "branch": "main",
+    "autoMerge": true,
+    "deployToPages": true
+  },
+  "notifications": {
+    "console": true,
+    "desktop": false,
+    "sound": false
+  }
+}

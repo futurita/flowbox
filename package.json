@@ -9,7 +9,10 @@
     "localhost": "npx serve . -p 3000",
     "serve": "npx serve . -p 8080",
     "pwa": "npx serve . -p 3000 -s",
-    "pwa-dev": "npx serve . -p 3000 -s --cors"
+    "pwa-dev": "npx serve . -p 3000 -s --cors",
+    "auto-push": "node auto-push.js",
+    "watch": "node watch-changes.js",
+    "deploy": "npm run auto-push && npm run start"
   },
   "keywords": [
     "design",
@@ -21,6 +24,7 @@
   "author": "Flowbox Team",
   "license": "MIT",
   "devDependencies": {
-    "serve": "^14.2.1"
+    "serve": "^14.2.1",
+    "chokidar": "^3.5.3"
   }
 }
