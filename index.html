@@ -995,6 +995,9 @@
                     deferredPrompt = null;
                     hideInstallButton();
                 });
+            } else {
+                // Fallback: show instructions in Settings → App
+                openAppInstallSettings();
             }
         }
 
