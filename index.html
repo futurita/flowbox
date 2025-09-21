@@ -998,6 +998,15 @@
             } else {
                 // Fallback: show instructions in Settings → App
                 openAppInstallSettings();
+                try {
+                    const instructions = document.getElementById('installInstructions');
+                    if (instructions) {
+                        instructions.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        const prevBoxShadow = instructions.style.boxShadow;
+                        instructions.style.boxShadow = '0 0 0 3px #ffcc02';
+                        setTimeout(() => { instructions.style.boxShadow = prevBoxShadow || ''; }, 1800);
+                    }
+                } catch (e) { /* no-op */ }
             }
         }
 
@@ -1122,20 +1131,7 @@
             // Install app button
             if (installAppBtn) {
                 installAppBtn.addEventListener('click', () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        deferredPrompt.userChoice.then((choiceResult) => {
-                            if (choiceResult.outcome === 'accepted') {
-                                console.log('PWA: User accepted the install prompt from settings');
-                                updateInstallStatus();
-                            }
-                            deferredPrompt = null;
-                        });
-                    } else {
-                        // Fallback: show instructions modal
-                        const modal = document.getElementById('installInstructionsModal');
-                        if (modal) modal.classList.add('show');
-                    }
+                    installApp();
                 });
             }
 
