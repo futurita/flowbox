@@ -60,8 +60,8 @@
       "url": "/flowbox/?action=new-project",
       "icons": [
         {
-          "src": "./icons/app_icon.png",
-          "sizes": "96x96",
+          "src": "./icons/icon-192x192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
@@ -73,8 +73,8 @@
       "url": "/flowbox/?section=journey",
       "icons": [
         {
-          "src": "./icons/app_icon.png",
-          "sizes": "96x96",
+          "src": "./icons/icon-192x192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
