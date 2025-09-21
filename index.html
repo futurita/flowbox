@@ -1063,7 +1063,17 @@
             hideInstallButton();
         }
 
-        // Only show floating install button when the browser fires beforeinstallprompt
+        // Show floating install button shortly after load on HTTPS when not installed.
+        // Clicking still only triggers the native browser prompt if available.
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+                const isSecure = window.location.protocol === 'https:';
+                if (!isStandalone && isSecure) {
+                    showInstallButton();
+                }
+            }, 1200);
+        });
 
         // Also hide install actions in Settings when running standalone
         document.addEventListener('DOMContentLoaded', () => {
