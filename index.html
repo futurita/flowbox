@@ -15,12 +15,15 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Flowbox">
+    <meta name="apple-mobile-web-app-icon" content="icons/app_icon.svg">
     <meta name="msapplication-TileColor" content="#2196f3">
+    <meta name="msapplication-TileImage" content="icons/app_icon.svg">
     <meta name="msapplication-tap-highlight" content="no">
     
     <!-- PWA Manifest (only load if not using file:// protocol) -->
     <script>
         if (window.location.protocol !== 'file:') {
+            console.log('Loading PWA manifest...');
             document.write('<link rel="manifest" href="./manifest.json">');
         } else {
             console.log('Running in file:// mode - PWA features disabled');
@@ -29,13 +32,13 @@
     
     <!-- Icons for different platforms -->
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/app_icon.svg">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/app_icon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/app_icon.svg">
+    <link rel="apple-touch-icon" sizes="167x167" href="icons/app_icon.svg">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=1.4">
+    <link rel="stylesheet" href="styles.css?v=1.5">
     
     <!-- Inline styles for color picker -->
     <style>
@@ -266,6 +269,16 @@
         .status-checking {
             color: #ff9800;
         }
+        
+        /* Install button black theme */
+        #installAppBtn {
+            background: #000 !important;
+            color: #fff !important;
+            border-color: #000 !important;
+        }
+        #installAppBtn:hover {
+            background: #111 !important;
+        }
     </style>
     
     <!-- Google Fonts for Thai support -->
@@ -373,6 +386,11 @@
                                 </svg>
                             </button>
                             <div class="toc-menu" id="tocMenu">
+                                <button class="toc-menu-item" id="tocExportJSONBtn">📄 Export as JSON</button>
+                                <button class="toc-menu-item" id="tocExportPDFBtn">📄 Export as PDF</button>
+                                <button class="toc-menu-item" id="tocExportPNGBtn">🖼️ Export as PNG</button>
+                                <button class="toc-menu-item" id="tocExportJPEGBtn">🖼️ Export as JPEG</button>
+                                <div class="toc-menu-separator"></div>
                                 <button class="toc-menu-item danger" id="tocDeleteProjectBtn">🗑️ Delete Project</button>
                             </div>
                         </div>
@@ -929,14 +947,14 @@
                     bottom: 20px;
                     right: 20px;
                     z-index: 1000;
-                    background: #2196f3;
+                    background: #000;
                     color: white;
                     border: none;
                     padding: 12px 20px;
                     border-radius: 8px;
                     font-size: 14px;
                     font-weight: 500;
-                    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                     cursor: pointer;
                     transition: all 0.2s ease;
                 `;
@@ -944,11 +962,11 @@
                 installButton.addEventListener('click', installApp);
                 installButton.addEventListener('mouseenter', () => {
                     installButton.style.transform = 'translateY(-2px)';
-                    installButton.style.boxShadow = '0 6px 16px rgba(33, 150, 243, 0.4)';
+                    installButton.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.45)';
                 });
                 installButton.addEventListener('mouseleave', () => {
                     installButton.style.transform = 'translateY(0)';
-                    installButton.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+                    installButton.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
                 });
                 
                 document.body.appendChild(installButton);

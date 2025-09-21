@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Flowbox logo - short river on black">
-  <rect x="0" y="0" width="256" height="256" fill="#000000"/>
-  <!-- Shorter river: compact S-curve centered -->
-  <path d="M72 200 C 96 176, 112 164, 128 152 S 176 120, 184 96" fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+<svg width="377" height="377" viewBox="0 0 377 377" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="376.87" height="376.87" rx="36.8037" fill="#111010"/>
+<path d="M32.4677 211.227C37.1293 207.035 41.6301 202.621 46.2255 198.382C69.8763 175.671 99.6055 157.83 131.188 160.179C152.301 160.86 166.768 180.166 183.58 196.622C201.847 215.824 228.952 230.572 256.586 230.226C291.437 230.879 315.145 203.963 333.24 180.727C337.074 175.73 340.77 170.64 344.391 165.503C340.098 170.093 335.774 174.649 331.378 179.105C310.513 200.202 285.512 222.161 257.075 219.483C231.952 218.071 210.376 205.557 192.689 187.347C176.917 172.328 159.608 148.952 131.488 148.982C95.4077 148.264 64.9638 171.267 44.4382 196.678C40.3767 201.487 36.5031 206.435 32.4677 211.227Z" fill="url(#paint0_linear_2311_3)"/>
+<defs>
+<linearGradient id="paint0_linear_2311_3" x1="343.774" y1="166.581" x2="31.4336" y2="213.906" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="white"/>
+</linearGradient>
+</defs>
 </svg>
 

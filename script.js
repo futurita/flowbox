@@ -686,11 +686,13 @@ function exportPersonaAsPNG(personaId) {
 
 // ===== PERSONA INTERFACE FUNCTIONS =====
 
-// Global export dropdown handler - works for all export dropdowns
+// DISABLED: Global export dropdown handler to prevent conflicts with flowboard 3-dots
 function setupGlobalExportHandlers() {
-    // Use event delegation to handle all export button clicks
+    console.log('Global export handlers DISABLED to prevent conflicts with flowboard 3-dots');
+    
+    // Only handle persona-specific exports, not flowboard exports
     document.addEventListener('click', function(e) {
-        // Handle export button clicks
+        // Handle persona export button clicks only
         if (e.target.closest('#personaExportBtn')) {
             e.stopPropagation();
             const dropdown = e.target.closest('.export-dropdown[data-context="persona"]');
@@ -700,7 +702,7 @@ function setupGlobalExportHandlers() {
             }
         }
         
-        // Handle export option clicks
+        // Handle persona export option clicks only
         if (e.target.closest('.export-option') && e.target.closest('.export-dropdown[data-context="persona"]')) {
             const option = e.target.closest('.export-option');
             const format = option.getAttribute('data-format');
@@ -711,9 +713,9 @@ function setupGlobalExportHandlers() {
             dropdown.classList.remove('active');
         }
         
-        // Close dropdowns when clicking outside
-        if (!e.target.closest('.export-dropdown')) {
-            document.querySelectorAll('.export-dropdown.active').forEach(dropdown => {
+        // Close dropdowns when clicking outside (but only persona dropdowns)
+        if (!e.target.closest('.export-dropdown[data-context="persona"]')) {
+            document.querySelectorAll('.export-dropdown[data-context="persona"].active').forEach(dropdown => {
                 dropdown.classList.remove('active');
             });
         }
@@ -726,7 +728,6 @@ function renderPersonasInterface() {
     
     renderPersonasList();
 }
-
 function renderInformationHierarchyInterface() {
     const mount = document.getElementById('informationHierarchyMount');
     if (!mount) return;
@@ -1146,11 +1147,11 @@ function showPersonaToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = 'persona-toast';
     
-    // Set background color based on type
-    let backgroundColor = '#4caf50'; // success - green
-    if (type === 'error') backgroundColor = '#f44336'; // error - red
-    if (type === 'info') backgroundColor = '#2196f3'; // info - blue
-    if (type === 'warning') backgroundColor = '#ff9800'; // warning - orange
+    // Set background color based on type - minimal black/white design
+    let backgroundColor = '#000000'; // success - black
+    if (type === 'error') backgroundColor = '#000000'; // error - black
+    if (type === 'info') backgroundColor = '#000000'; // info - black
+    if (type === 'warning') backgroundColor = '#000000'; // warning - black
     
     toast.style.cssText = `
         position: fixed;
@@ -1159,12 +1160,13 @@ function showPersonaToast(message, type = 'success') {
         background: ${backgroundColor};
         color: white;
         padding: 12px 20px;
-        border-radius: 6px;
+        border-radius: 4px;
         z-index: 1000;
         font-size: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         max-width: 300px;
         word-wrap: break-word;
+        border: 1px solid #333;
     `;
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -1449,7 +1451,6 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
-
 // Toast notification system
 function showToast(message, type = 'info', duration = 3000) {
     // Remove existing toasts
@@ -1489,9 +1490,9 @@ function showToast(message, type = 'info', duration = 3000) {
                 transform: translateX(0);
             }
             .toast-success {
-                background: #4caf50;
+                background: #000000;
                 color: white;
-                border-left: 4px solid #2e7d32;
+                border-left: 4px solid #333;
             }
             .toast-warning {
                 background: #ff9800;
@@ -1848,10 +1849,14 @@ function exportPersonaData(format) {
                 exportPersonasAsCSV(personasData);
                 break;
             case 'png':
-                exportPersonasAsPNG();
+                // Export each persona board as PNG in a ZIP from main nav
+                exportPersonasAsPNGZip();
                 break;
             case 'pdf':
                 exportPersonasAsPDF();
+                break;
+            case 'jpeg':
+                exportPersonasAsJPEGZip();
                 break;
             default:
                 console.warn('Unknown export format:', format);
@@ -1865,22 +1870,32 @@ function exportPersonaData(format) {
 function getAllPersonasData() {
     try {
         // Use the consistent data loading method
-        const personas = loadPersonas();
-        return personas.map(persona => ({
-            id: persona.id,
-            name: persona.name || '',
-            role: persona.role || '',
-            age: persona.age || '',
-            location: persona.location || '',
-            quote1: persona.quote1 || '',
-            quote2: persona.quote2 || '',
-            about: persona.about || '',
-            behaviors: persona.behaviors || '',
-            frustrations: persona.frustrations || '',
-            goals: persona.goals || '',
-            tasks: persona.tasks || '',
-            image: persona.image || ''
-        }));
+        const boards = loadPersonaBoards();
+        const rows = [];
+        boards.forEach((board, boardIndex) => {
+            const personas = board.personas || [];
+            personas.forEach((persona, personaIndex) => {
+                rows.push({
+                    boardId: board.id,
+                    boardName: board.name || `Persona Board ${boardIndex + 1}`,
+                    personaIndex: personaIndex,
+                    id: persona.id,
+                    name: persona.name || '',
+                    role: persona.role || '',
+                    age: persona.age || '',
+                    location: persona.location || '',
+                    quote1: persona.quote1 || '',
+                    quote2: persona.quote2 || '',
+                    about: persona.about || '',
+                    behaviors: persona.behaviors || '',
+                    frustrations: persona.frustrations || '',
+                    goals: persona.goals || '',
+                    tasks: persona.tasks || '',
+                    image: persona.image || ''
+                });
+            });
+        });
+        return rows;
     } catch (error) {
         console.error('Error getting all personas data:', error);
         return [];
@@ -1895,10 +1910,13 @@ function exportPersonasAsCSV(personasData) {
     }
     
     // Create CSV headers
-    const headers = ['Name', 'Role', 'Age', 'Location', 'Quote 1', 'Quote 2', 'About', 'Behaviors', 'Frustrations', 'Goals', 'Tasks'];
+    const headers = ['Board', 'Board ID', 'Persona ID', 'Name', 'Role', 'Age', 'Location', 'Quote 1', 'Quote 2', 'About', 'Behaviors', 'Frustrations', 'Goals', 'Tasks', 'Image'];
     
     // Create CSV rows
     const rows = personasData.map(persona => [
+        persona.boardName || '',
+        persona.boardId || '',
+        persona.id || '',
         persona.name,
         persona.role,
         persona.age,
@@ -1909,12 +1927,14 @@ function exportPersonasAsCSV(personasData) {
         persona.behaviors,
         persona.frustrations,
         persona.goals,
-        persona.tasks
+        persona.tasks,
+        // Store image data URL directly; spreadsheets will truncate, but kept for completeness
+        persona.image || ''
     ]);
     
     // Combine headers and rows
     const csvContent = [headers, ...rows]
-        .map(row => row.map(field => `"${(field || '').replace(/"/g, '""')}"`).join(','))
+        .map(row => row.map(field => `"${(field || '').toString().replace(/"/g, '""')}"`).join(','))
         .join('\n');
     
     // Download CSV
@@ -1935,16 +1955,42 @@ function exportPersonasAsCSV(personasData) {
     }
 }
 
+// Helper to find the personas container regardless of empty or list state
+function getPersonasExportRoot() {
+    // Empty state uses a single container with this id
+    const byId = document.getElementById('personasContainer');
+    if (byId) return byId;
+    // Normal state wraps multiple .personas-container items in this list container
+    const list = document.querySelector('#personasMount .personas-list-container');
+    if (list) return list;
+    // Fallbacks
+    const anyContainer = document.querySelector('#personasMount .personas-container');
+    if (anyContainer) return anyContainer.closest('#personasMount') || anyContainer;
+    return null;
+}
+
+function withPersonaExportMode(root, enable) {
+    if (!root) return () => {};
+    const targets = root.classList && root.classList.contains('personas-container')
+        ? [root]
+        : Array.from(root.querySelectorAll('.personas-container'));
+    if (enable) {
+        targets.forEach(el => el.classList.add('export-mode'));
+        return () => targets.forEach(el => el.classList.remove('export-mode'));
+    }
+    return () => {};
+}
+
 function exportPersonasAsPNG() {
     try {
-        const personasContainer = document.getElementById('personasContainer');
+        const personasContainer = getPersonasExportRoot();
         if (!personasContainer) {
             alert('No persona content to export.');
             return;
         }
         
-        // Add export-specific class for styling
-        personasContainer.classList.add('export-mode');
+        // Add export-specific class for styling (apply to all persona cards)
+        const removeExportMode = withPersonaExportMode(personasContainer, true);
         
         // Use html2canvas to capture the persona content
         if (typeof html2canvas !== 'undefined') {
@@ -2008,14 +2054,14 @@ function exportPersonasAsPNG() {
                     showPersonaSuccessToast('Personas exported as PNG successfully!');
                     
                     // Remove export-specific class
-                    personasContainer.classList.remove('export-mode');
+                    removeExportMode();
                 }, 'image/png');
             }).catch(error => {
                 console.error('Error generating PNG:', error);
                 alert('Error generating PNG. Please try again.');
                 
                 // Remove export-specific class on error
-                personasContainer.classList.remove('export-mode');
+                removeExportMode();
             });
         } else {
             alert('PNG export not available. Please ensure html2canvas library is loaded.');
@@ -2028,14 +2074,14 @@ function exportPersonasAsPNG() {
 
 function exportPersonasAsPDF() {
     try {
-        const personasContainer = document.getElementById('personasContainer');
+        const personasContainer = getPersonasExportRoot();
         if (!personasContainer) {
             alert('No persona content to export.');
             return;
         }
         
-        // Use html2canvas + jsPDF to create PDF
-        if (typeof html2canvas !== 'undefined' && typeof window.jsPDF !== 'undefined') {
+        // Use html2canvas + jsPDF to create PDF (UMD exposes window.jspdf.jsPDF)
+        if (typeof html2canvas !== 'undefined' && typeof window.jspdf !== 'undefined') {
             html2canvas(personasContainer, {
                 backgroundColor: '#ffffff',
                 scale: 2,
@@ -2043,7 +2089,8 @@ function exportPersonasAsPDF() {
                 allowTaint: true
             }).then(canvas => {
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new window.jsPDF('p', 'mm', 'a4');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
                 
                 const imgWidth = 210; // A4 width in mm
                 const pageHeight = 295; // A4 height in mm
@@ -2075,6 +2122,129 @@ function exportPersonasAsPDF() {
         console.error('Error exporting as PDF:', error);
         alert('Error exporting as PDF. Please try again.');
     }
+}
+
+// Export personas view as JPEG
+function exportPersonasAsJPEG() {
+    try {
+        const personasContainer = getPersonasExportRoot();
+        if (!personasContainer) {
+            alert('No persona content to export.');
+            return;
+        }
+
+        const removeExportMode = withPersonaExportMode(personasContainer, true);
+
+        if (typeof html2canvas !== 'undefined') {
+            html2canvas(personasContainer, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+                width: personasContainer.scrollWidth,
+                height: personasContainer.scrollHeight
+            }).then(canvas => {
+                canvas.toBlob(blob => {
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `personas-${new Date().toISOString().split('T')[0]}.jpg`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showPersonaSuccessToast('Personas exported as JPEG successfully!');
+                    removeExportMode();
+                }, 'image/jpeg', 0.92);
+            }).catch(error => {
+                console.error('Error generating JPEG:', error);
+                alert('Error generating JPEG. Please try again.');
+                removeExportMode();
+            });
+        } else {
+            alert('JPEG export not available. Please ensure html2canvas library is loaded.');
+        }
+    } catch (error) {
+        console.error('Error exporting as JPEG:', error);
+        alert('Error exporting as JPEG. Please try again.');
+    }
+}
+
+// Export each persona board as an image inside a ZIP
+async function exportPersonasAsZIP(imageType = 'png') {
+    try {
+        if (typeof window.html2canvas === 'undefined') {
+            alert('Export not available. html2canvas is not loaded.');
+            return;
+        }
+        if (typeof window.JSZip === 'undefined') {
+            alert('ZIP export not available. JSZip is not loaded.');
+            return;
+        }
+
+        const boards = (loadPersonaBoards && loadPersonaBoards()) || [];
+        const boardsWithPersonas = boards.filter(b => (b.personas || []).length > 0);
+        if (boardsWithPersonas.length === 0) {
+            alert('No persona boards to export.');
+            return;
+        }
+
+        const zip = new window.JSZip();
+        const date = new Date().toISOString().split('T')[0];
+        const safe = (s) => (String(s || '')).replace(/[^a-zA-Z0-9\s_-]/g, '').trim().replace(/\s+/g, '_') || 'persona';
+
+        for (let i = 0; i < boardsWithPersonas.length; i++) {
+            const board = boardsWithPersonas[i];
+            const boardEl = document.querySelector(`.personas-container[data-board-id="${board.id}"]`);
+            if (!boardEl) continue;
+
+            // Apply export-mode styles for better rendering
+            boardEl.classList.add('export-mode');
+
+            // Ensure layout is measured correctly
+            await new Promise(r => setTimeout(r, 50));
+
+            const canvas = await window.html2canvas(boardEl, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+                width: boardEl.scrollWidth,
+                height: boardEl.scrollHeight
+            });
+
+            // Convert canvas to blob and add to zip
+            const blob = await new Promise(resolve =>
+                canvas.toBlob(resolve, imageType === 'jpeg' ? 'image/jpeg' : 'image/png', imageType === 'jpeg' ? 0.92 : 1.0)
+            );
+            const filename = `${String(i + 1).padStart(2, '0')}-${safe(board.name)}.${imageType === 'jpeg' ? 'jpg' : 'png'}`;
+            zip.file(filename, blob);
+
+            boardEl.classList.remove('export-mode');
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `personas-boards-${date}-${imageType}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showPersonaSuccessToast(`Exported ${boardsWithPersonas.length} boards as ${imageType.toUpperCase()} in a ZIP.`);
+    } catch (error) {
+        console.error('Error exporting personas as ZIP:', error);
+        alert('Error exporting personas. Please try again.');
+    }
+}
+
+function exportPersonasAsPNGZip() {
+    return exportPersonasAsZIP('png');
+}
+
+function exportPersonasAsJPEGZip() {
+    return exportPersonasAsZIP('jpeg');
 }
 function showPersonaHistoryModal(versions) {
     // Create modal HTML
@@ -2243,7 +2413,6 @@ window.loadPersonaVersion = function(versionId) {
         alert('Error loading persona version. Please try again.');
     }
 }
-
 window.deletePersonaVersion = function(versionId) {
     if (!confirm('Are you sure you want to delete this persona version? This action cannot be undone.')) {
         return;
@@ -2286,11 +2455,11 @@ function showPersonaSuccessToast(message) {
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background: #4CAF50;
+        background: #000000;
         color: white;
         padding: 12px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         z-index: 10000;
         font-weight: 500;
         font-size: 14px;
@@ -2300,9 +2469,10 @@ function showPersonaSuccessToast(message) {
         opacity: 0;
         transition: opacity 0.3s ease, transform 0.3s ease;
         pointer-events: none;
+        border: 1px solid #333;
     `;
     
-    toast.innerHTML = `✅ ${message}`;
+    toast.innerHTML = `✓ ${message}`;
     
     document.body.appendChild(toast);
     
@@ -2865,7 +3035,6 @@ function saveFlowBoards(boards) {
         updateStorageUsage();
     } catch {}
 }
-
 // Make flow data functions globally available
 window.loadFlowData = loadFlowData;
 window.saveFlowData = saveFlowData;
@@ -3935,23 +4104,46 @@ class JourneyMap {
             existingToast.remove();
         }
         
-        // Create new toast
+        // Create new toast with minimal black/white styling
         const toast = document.createElement('div');
         toast.className = 'success-toast';
         toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000000;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+            border: 1px solid #333;
+        `;
+        toast.innerHTML = `✓ ${message}`;
         document.body.appendChild(toast);
         
-        // Trigger animation
+        // Show toast
         setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        }, 100);
         
         // Auto-remove after 3 seconds
         setTimeout(() => {
-            toast.classList.remove('show');
+            toast.style.opacity = '0';
             setTimeout(() => {
                 if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
+                    toast.remove();
                 }
             }, 300);
         }, 3000);
@@ -4267,9 +4459,9 @@ class JourneyMap {
         }
 
 
-        // Export dropdown
-        const exportBtn = document.getElementById('exportBtn');
-        const exportMenu = document.getElementById('exportMenu');
+        // Export dropdown - look for the correct IDs based on context
+        const exportBtn = document.getElementById('exportBtn') || document.getElementById('personaExportBtn') || document.getElementById('flowExportBtn');
+        const exportMenu = document.getElementById('exportMenu') || document.getElementById('personaExportMenu') || document.getElementById('flowExportMenu');
         const exportDropdown = document.querySelector('.export-dropdown');
 
         console.log('Export elements found:', {
@@ -4551,7 +4743,6 @@ class JourneyMap {
         console.log('All export libraries loaded successfully');
         return true;
     }
-
     async exportData(format) {
         // Verify libraries before attempting export
         if (!this.verifyExportLibraries()) {
@@ -5242,7 +5433,6 @@ class JourneyMap {
             console.error('Error in 11 columns test:', error);
         }
     }
-
     // Simple method to just create images without auto-download
     async createJPEGImagesOnly() {
         try {
@@ -5924,7 +6114,6 @@ class JourneyMap {
             this.toast(`Error exporting to JPEG ZIP: ${error.message}`);
         }
     }
-
     async exportToJPEG() {
         try {
             console.log('Starting JPEG export...');
@@ -6224,6 +6413,10 @@ class FlowEditor {
         // Use setTimeout to ensure DOM is fully rendered before binding toolbar
         setTimeout(() => {
             this.bindOverlay();
+            // Add debugging to check if the 3 dots button exists
+            this.debugThreeDotsButton();
+            // Add direct event binding as backup
+            this.bindThreeDotsButtonDirectly();
         }, 0);
         this.bindShortcuts();
         this.updateToolbarState();
@@ -6452,79 +6645,24 @@ class FlowEditor {
             });
         }
         
-        // Handle more menu
-        if (more && moreMenu) {
-            more.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('More menu button clicked');
-                moreMenu.style.display = moreMenu.style.display === 'block' ? 'none' : 'block';
-            });
+        // DISABLED: Event delegation handler to prevent conflicts
+        console.log('Event delegation handler DISABLED for testing');
+        
+        // Handle more menu - use event delegation for dynamic elements
+        // root.addEventListener('click', (e) => {
+        //     // ... disabled to prevent conflicts with direct handler
+        // });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const activeDropdown = root.querySelector('.export-dropdown.active');
             
-            // Close menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!more.contains(e.target) && !moreMenu.contains(e.target)) {
-                    moreMenu.style.display = 'none';
-                }
-            });
-        }
+            if (activeDropdown && 
+                !activeDropdown.contains(e.target)) {
+                activeDropdown.classList.remove('active');
+            }
+        });
         
-        
-        
-        if (exportJson) {
-            exportJson.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Export JSON button clicked');
-                this.exportJSON();
-                if (moreMenu) moreMenu.style.display = 'none';
-            });
-        }
-        
-        if (exportPdf) {
-            exportPdf.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Export PDF button clicked');
-                this.exportToPDF();
-                if (moreMenu) moreMenu.style.display = 'none';
-            });
-        }
-        
-        if (exportPng) {
-            exportPng.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Export PNG button clicked');
-                await this.exportToPNG();
-                if (moreMenu) moreMenu.style.display = 'none';
-            });
-        }
-        
-        // Handle import JSON
-        if (importJson) {
-            importJson.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Import JSON button clicked');
-                this.importJSON();
-                if (moreMenu) moreMenu.style.display = 'none';
-            });
-        }
-        
-        
-        // Handle delete board
-        if (deleteBoard) {
-            deleteBoard.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Delete board button clicked');
-                if (confirm('Are you sure you want to delete this flow board?')) {
-                    this.deleteCurrentBoard();
-                }
-                if (moreMenu) moreMenu.style.display = 'none';
-            });
-        }
         
         // Handle import file input
         const boardId = this.wrap?.getAttribute('data-board-id') || 'default';
@@ -6540,6 +6678,124 @@ class FlowEditor {
                 e.target.value = '';
             });
         }
+    }
+    
+    triggerImportJSON() {
+        const boardId = this.wrap?.getAttribute('data-board-id') || 'default';
+        const fileInput = document.getElementById(`flowImportFile_${boardId}`);
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            // Fallback: create a temporary input and open dialog
+            this.importJSON();
+        }
+    }
+    
+    debugThreeDotsButton() {
+        const root = this.wrap || document;
+        const threeDotsButton = root.querySelector('button[data-flow="overlay-more"]');
+        const threeDotsMenu = root.querySelector('[data-flow="overlay-more-menu"]');
+        
+        console.log('=== 3 DOTS BUTTON DEBUG ===');
+        console.log('Root element:', root);
+        console.log('3 dots button found:', !!threeDotsButton);
+        console.log('3 dots menu found:', !!threeDotsMenu);
+        
+        if (threeDotsButton) {
+            console.log('Button classes:', threeDotsButton.className);
+            console.log('Button data-flow:', threeDotsButton.getAttribute('data-flow'));
+            console.log('Button parent:', threeDotsButton.parentElement);
+            console.log('Button is visible:', threeDotsButton.offsetParent !== null);
+            console.log('Button computed style:', window.getComputedStyle(threeDotsButton));
+        }
+        
+        if (threeDotsMenu) {
+            console.log('Menu display style:', threeDotsMenu.style.display);
+            console.log('Menu computed display:', window.getComputedStyle(threeDotsMenu).display);
+        }
+        
+        // Note: Test click handler removed to avoid conflicts
+        
+        console.log('========================');
+    }
+    
+    bindThreeDotsButtonDirectly() {
+        const root = this.wrap || document;
+        
+        // Simple, clean 3-dots handler for flowboards only
+        const setupThreeDots = () => {
+            const threeDotsButton = root.querySelector('button[data-flow="overlay-more"]');
+            const exportDropdown = root.querySelector('.export-dropdown');
+            
+            if (threeDotsButton && exportDropdown) {
+                console.log('Setting up simple 3-dots handler for flowboard');
+                
+                // 1. Toggle menu on button click
+                threeDotsButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('3-dots clicked, toggling menu');
+                    
+                    exportDropdown.classList.toggle('active');
+                    console.log('Menu active:', exportDropdown.classList.contains('active'));
+                });
+                
+                // 2. Handle menu item clicks
+                const menuItems = exportDropdown.querySelectorAll('button.export-option[data-flow]');
+                console.log('Found menu items:', menuItems.length);
+                
+                menuItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const action = item.getAttribute('data-flow');
+                        console.log('Menu item clicked:', action);
+                        
+                        // Execute action
+                        switch (action) {
+                            case 'overlay-export-json':
+                                this.exportJSON();
+                                break;
+                            case 'overlay-export-pdf':
+                                this.exportToPDF();
+                                break;
+                            case 'overlay-export-png':
+                                this.exportToPNG();
+                                break;
+                            case 'overlay-import-json':
+                                this.triggerImportJSON();
+                                break;
+                            case 'overlay-delete-board':
+                                if (confirm('Delete this flow board?')) {
+                                    this.deleteCurrentBoard();
+                                }
+                                break;
+                        }
+                        
+                        // Close menu
+                        exportDropdown.classList.remove('active');
+                    });
+                });
+                
+                // 3. Close menu when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!exportDropdown.contains(e.target)) {
+                        exportDropdown.classList.remove('active');
+                    }
+                });
+                
+                console.log('✅ Simple 3-dots handler setup complete');
+                return true;
+            }
+            return false;
+        };
+        
+        // Setup immediately or retry
+        if (!setupThreeDots()) {
+            setTimeout(setupThreeDots, 100);
+        }
+        console.log('3-dots button functionality set up with direct handlers');
     }
 
     bindShortcuts() {
@@ -6617,7 +6873,6 @@ class FlowEditor {
         // Add trackpad zoom support
         this.bindTrackpadZoom();
     }
-    
     bindTrackpadZoom() {
         // Store the bound function so we can remove it later if needed
         this.boundWheel = (e) => {
@@ -6660,7 +6915,6 @@ class FlowEditor {
         // Add the wheel event listener with passive: false to allow preventDefault
         document.addEventListener('wheel', this.boundWheel, { passive: false });
     }
-
     addNode(kind) {
         const id = generateId('node');
         let x = 40, y = 40;
@@ -7381,23 +7635,6 @@ class FlowEditor {
         }
         return dy >= 0 ? 'top' : 'bottom'; // if target is below, approach its top side
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     updateToolbarState() {
         const root = this.wrap || document;
         const toolbar = root.querySelector('.flow-toolbar');
@@ -7461,7 +7698,6 @@ class FlowEditor {
             this.showImportError('Failed to export JSON file. Please try again.');
         }
     }
-
     async exportToPDF() {
         try {
             console.log('Starting PDF export (flowboard viewport only)...');
@@ -7654,18 +7890,19 @@ class FlowEditor {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #44aa44;
+            background: #000000;
             color: white;
             padding: 12px 16px;
-            border-radius: 6px;
+            border-radius: 4px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             z-index: 10000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 14px;
             max-width: 300px;
             word-wrap: break-word;
+            border: 1px solid #333;
         `;
-        alert.textContent = message;
+        alert.innerHTML = `✓ ${message}`;
         
         document.body.appendChild(alert);
         
@@ -7993,23 +8230,46 @@ class FlowEditor {
             existingToast.remove();
         }
         
-        // Create new toast
+        // Create new toast with minimal black/white styling
         const toast = document.createElement('div');
         toast.className = 'success-toast';
         toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000000;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+            border: 1px solid #333;
+        `;
+        toast.innerHTML = `✓ ${message}`;
         document.body.appendChild(toast);
         
-        // Trigger animation
+        // Show toast
         setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        }, 100);
         
         // Auto-remove after 3 seconds
         setTimeout(() => {
-            toast.classList.remove('show');
+            toast.style.opacity = '0';
             setTimeout(() => {
                 if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
+                    toast.remove();
                 }
             }, 300);
         }, 3000);
@@ -8039,7 +8299,6 @@ class FlowEditor {
         });
         modal.classList.add('show');
     }
-
     render() {
         // Determine canvas size (infinite growth)
         let maxX = 0, maxY = 0;
@@ -8822,7 +9081,6 @@ class FlowEditor {
         // Set up text editing
         this.setupEdgeTextEditing(textElement, edge);
     }
-    
     // Setup text editing for edge text element
     setupEdgeTextEditing(textElement, edge) {
         // Check if already editing to prevent multiple edits
@@ -9618,7 +9876,6 @@ class FlowEditor {
             console.error('Failed to delete board completely:', err);
         }
     }
-
     autoArrange() {
         // Simple grid arrangement for nodes
         const nodes = [...this.state.nodes];
@@ -10014,6 +10271,8 @@ class FlowBoards {
         const boardClass = isEven ? 'flow-board flow-board-even' : 'flow-board flow-board-odd';
         
         wrap.className = boardClass;
+        // Tag the wrapper with its board id so FlowEditor can resolve per-board inputs
+        wrap.setAttribute('data-board-id', id);
         
         // Generate title for this board
         const boardNumber = this.boards.length + 1;
@@ -10090,7 +10349,7 @@ class FlowBoards {
                                 <circle cx="12" cy="19" r="2" fill="#333"/>
                             </svg>
                         </button>
-                        <div class="export-menu" data-flow="overlay-more-menu" style="display: none;">
+                        <div class="export-menu" data-flow="overlay-more-menu">
                             <button class="export-option" data-flow="overlay-import-json">📥 Import JSON</button>
                             <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
                             <button class="export-option" data-flow="overlay-export-pdf">📄 Export as PDF</button>
@@ -10409,9 +10668,6 @@ FlowBoards.prototype.bindKeyboardShortcuts = function() {
     document.addEventListener('keydown', this.boundKeydown);
     console.log('FlowBoards keyboard shortcuts bound');
 };
-// removed rules tabs implementation
-
-
 // Global function to render projects in the sidebar
 function renderProjects() {
     const listEl = document.getElementById('projectList');
@@ -11121,7 +11377,8 @@ function bindFlowNavbarActions() {
         // Try to initialize flow editor if not available
         const flowArea = document.getElementById('flowMount') && document.getElementById('flowMount').querySelector('.flow-area');
         if (flowArea) {
-            window.flowEditor = new FlowBoards('as-is');
+            const currentFlowType = getCurrentFlowType();
+            window.flowEditor = new FlowBoards(currentFlowType);
         } else {
             console.error('Flow area not found, cannot initialize flow editor');
             return;
@@ -11130,7 +11387,7 @@ function bindFlowNavbarActions() {
     add && add.addEventListener('click', () => {
         // Create a new empty flow area/board
         console.log('Add button clicked! Creating empty flow area/board...');
-        const emptyState = { nodes: [], sections: [] };
+        const emptyState = { nodes: [], edges: [], sections: [] };
         const mount = document.getElementById('flowMount');
         const areaExists = mount && mount.querySelector && mount.querySelector('.flow-area');
         if (!window.flowEditor || !areaExists) {
@@ -11138,12 +11395,12 @@ function bindFlowNavbarActions() {
             if (window.Components && typeof window.Components.renderFlow === 'function') {
                 window.Components.renderFlow('flowMount');
             }
-            window.flowEditor = new FlowBoards('as-is');
-            if (window.flowEditor && window.flowEditor.boards && window.flowEditor.boards[0]) {
-                const ed = window.flowEditor.boards[0].editor;
-                if (ed) { ed.state = JSON.parse(JSON.stringify(emptyState)); ed.render(); }
+            const currentFlowType = getCurrentFlowType();
+            window.flowEditor = new FlowBoards(currentFlowType);
+            if (window.flowEditor && typeof window.flowEditor.addBoard === 'function') {
+                window.flowEditor.addBoard(emptyState);
             }
-            console.log('Empty flow area created.');
+            console.log('Empty flow area and first empty board created.');
             return;
         }
         // If area exists, add a new empty board beneath
@@ -11355,6 +11612,103 @@ document.addEventListener('click', (event) => {
         console.warn('Flow navbar delegated handler error:', err);
     }
 });
+
+// Note: Manual fix handlers removed - using proper direct handlers instead
+
+// Global function to test 3 dots button functionality
+window.testThreeDotsButton = function() {
+    console.log('=== TESTING 3 DOTS BUTTON ===');
+    
+    const allThreeDotsButtons = document.querySelectorAll('button[data-flow="overlay-more"]');
+    console.log('Found', allThreeDotsButtons.length, '3 dots buttons');
+    
+    if (allThreeDotsButtons.length === 0) {
+        console.error('No 3 dots buttons found!');
+        return;
+    }
+    
+    const firstButton = allThreeDotsButtons[0];
+    console.log('Testing first button:', firstButton);
+    
+    // Simulate a click
+    console.log('Simulating click on first button...');
+    firstButton.click();
+    
+    // Check if menu appeared
+    setTimeout(() => {
+        const menu = firstButton.parentElement.querySelector('[data-flow="overlay-more-menu"]');
+        if (menu) {
+            const isVisible = menu.style.display === 'block';
+            console.log('Menu visibility after click:', isVisible);
+            if (isVisible) {
+                console.log('✅ 3 dots button is working!');
+            } else {
+                console.log('❌ 3 dots button clicked but menu not visible');
+            }
+        } else {
+            console.log('❌ Menu element not found');
+        }
+    }, 100);
+};
+
+// Enhanced individual board export function
+window.exportIndividualBoard = function(boardId, format = 'json') {
+    console.log(`=== EXPORTING INDIVIDUAL BOARD ${boardId} as ${format} ===`);
+    
+    if (!window.flowEditor) {
+        console.error('Flow editor not available');
+        return;
+    }
+    
+    const board = window.flowEditor.boards.find(b => b.id === boardId);
+    if (!board || !board.editor) {
+        console.error(`Board ${boardId} not found or has no editor`);
+        return;
+    }
+    
+    const editor = board.editor;
+    console.log('Found board editor:', editor);
+    
+    switch (format) {
+        case 'json':
+            if (typeof editor.exportJSON === 'function') {
+                editor.exportJSON();
+                console.log('✅ JSON export initiated');
+            } else {
+                console.error('exportJSON method not available');
+            }
+            break;
+        case 'pdf':
+            if (typeof editor.exportToPDF === 'function') {
+                editor.exportToPDF();
+                console.log('✅ PDF export initiated');
+            } else {
+                console.error('exportToPDF method not available');
+            }
+            break;
+        case 'png':
+            if (typeof editor.exportToPNG === 'function') {
+                editor.exportToPNG();
+                console.log('✅ PNG export initiated');
+            } else {
+                console.error('exportToPNG method not available');
+            }
+            break;
+        default:
+            console.error('Unsupported export format:', format);
+    }
+};
+
+// Auto-fix 3 dots buttons when flow boards are created
+const originalAddBoard = FlowBoards.prototype.addBoard;
+FlowBoards.prototype.addBoard = function(initialState) {
+    const result = originalAddBoard.call(this, initialState);
+    
+    // Note: 3-dots buttons are now handled by direct event listeners in FlowEditor
+    console.log('Board created - 3-dots buttons handled by FlowEditor direct handlers');
+    
+    return result;
+};
 // bindFlowActionBar removed (reverted)
 
 function refreshCoverUI() {
@@ -11716,22 +12070,30 @@ function updateProjectNameHeading() {
         h2.textContent = current ? current.name : 'Project Name';
     } catch {}
 }
-
 // --- TOC menu ---
 function setupTocMenu() {
     const btn = document.getElementById('tocMenuBtn');
     const dropdown = btn ? btn.parentElement : null;
     const menu = document.getElementById('tocMenu');
     const deleteBtn = document.getElementById('tocDeleteProjectBtn');
+    const exportJSONBtn = document.getElementById('tocExportJSONBtn');
+    const exportPDFBtn = document.getElementById('tocExportPDFBtn');
+    const exportPNGBtn = document.getElementById('tocExportPNGBtn');
+    const exportJPEGBtn = document.getElementById('tocExportJPEGBtn');
+    
     if (!btn || !dropdown || !menu || !deleteBtn) return;
 
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        console.log('TOC Menu button clicked, toggling dropdown');
         dropdown.classList.toggle('active');
     });
+    
     document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target)) dropdown.classList.remove('active');
     });
+    
+    // Delete project functionality
     deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (window.journey && typeof window.journey.deleteCurrentProject === 'function') {
@@ -11739,6 +12101,151 @@ function setupTocMenu() {
         }
         dropdown.classList.remove('active');
     });
+    
+    // Export functionality - determine current context and use appropriate export function
+    function getCurrentContext() {
+        const activeTocItem = document.querySelector('.toc-item.active, .toc-subitem.active');
+        if (activeTocItem) {
+            const target = activeTocItem.getAttribute('data-target');
+            if (target === 'as-is-flow' || target === 'to-be-flow') {
+                return 'flow';
+            } else if (target === 'personas') {
+                return 'persona';
+            } else if (target === 'journey') {
+                return 'journey';
+            }
+        }
+        return 'journey'; // default to journey
+    }
+    
+    function handleExport(format) {
+        const context = getCurrentContext();
+        console.log(`TOC Menu: Exporting ${format} for context: ${context}`);
+        console.log('Available objects:', {
+            flowEditor: !!window.flowEditor,
+            journey: !!window.journey,
+            exportPersonasAsPNG: typeof exportPersonasAsPNG,
+            exportPersonasAsCSV: typeof exportPersonasAsCSV
+        });
+        
+        dropdown.classList.remove('active');
+        
+        if (context === 'flow' && window.flowEditor) {
+            // Use flow editor export functions
+            switch (format) {
+                case 'json':
+                    if (typeof window.flowEditor.exportJSON === 'function') {
+                        window.flowEditor.exportJSON();
+                    }
+                    break;
+                case 'pdf':
+                    if (typeof window.flowEditor.exportToPDF === 'function') {
+                        window.flowEditor.exportToPDF();
+                    }
+                    break;
+                case 'png':
+                    if (typeof window.flowEditor.exportToPNG === 'function') {
+                        window.flowEditor.exportToPNG();
+                    }
+                    break;
+                case 'jpeg':
+                    // JPEG export for flow boards
+                    if (typeof window.flowEditor.exportToPNG === 'function') {
+                        window.flowEditor.exportToPNG(); // Use PNG as fallback for JPEG
+                    }
+                    break;
+            }
+        } else if (context === 'persona') {
+            // Persona exports
+            switch (format) {
+                case 'json': {
+                    const personasData = window.loadPersonas ? window.loadPersonas() : [];
+                    const jsonData = JSON.stringify(personasData, null, 2);
+                    const blob = new Blob([jsonData], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `personas-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    break;
+                }
+                case 'pdf':
+                    if (typeof exportPersonasAsPDF === 'function') {
+                        exportPersonasAsPDF();
+                    }
+                    break;
+                case 'png':
+                    if (typeof exportPersonasAsPNGZip === 'function') {
+                        exportPersonasAsPNGZip();
+                    }
+                    break;
+                case 'jpeg':
+                    if (typeof exportPersonasAsJPEGZip === 'function') {
+                        exportPersonasAsJPEGZip();
+                    }
+                    break;
+            }
+        } else if (context === 'journey' && window.journey) {
+            // Use journey map export functions
+            switch (format) {
+                case 'json':
+                    // For JSON export, use CSV export as alternative
+                    if (typeof window.journey.exportToCSV === 'function') {
+                        window.journey.exportToCSV();
+                    }
+                    break;
+                case 'pdf':
+                    if (typeof window.journey.exportToPDF === 'function') {
+                        window.journey.exportToPDF();
+                    }
+                    break;
+                case 'png':
+                    if (typeof window.journey.exportToPNG === 'function') {
+                        window.journey.exportToPNG();
+                    }
+                    break;
+                case 'jpeg':
+                    if (typeof window.journey.exportToJPEGAsZIP === 'function') {
+                        window.journey.exportToJPEGAsZIP();
+                    } else if (typeof window.journey.exportToJPEG === 'function') {
+                        window.journey.exportToJPEG();
+                    }
+                    break;
+            }
+        } else {
+            console.warn(`No export function available for context: ${context}, format: ${format}`);
+        }
+    }
+    
+    // Add event listeners for export buttons
+    if (exportJSONBtn) {
+        exportJSONBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleExport('json');
+        });
+    }
+    
+    if (exportPDFBtn) {
+        exportPDFBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleExport('pdf');
+        });
+    }
+    
+    if (exportPNGBtn) {
+        exportPNGBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleExport('png');
+        });
+    }
+    
+    if (exportJPEGBtn) {
+        exportJPEGBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleExport('jpeg');
+        });
+    }
 }
 
 function setupProjectNameHeading() {
@@ -11992,3 +12499,5 @@ window.activateFlowSection = function() {
         console.error('Error during manual activation:', error);
     }
 };
+
+// Note: Global event listener removed - using direct handlers instead

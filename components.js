@@ -63,15 +63,15 @@ window.Components.renderContentNavbar = function renderContentNavbar(mountId, ti
                         </svg>
                     </button>
                     <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" />
-                    <div class="export-dropdown" data-context="persona">
-                        <button class="btn btn-secondary icon-only" id="personaExportBtn" title="Export" aria-label="Export">
+                    <div class="export-dropdown" data-context="${title.toLowerCase()}">
+                        <button class="btn btn-secondary icon-only" id="${title === 'Persona' ? 'personaExportBtn' : 'exportBtn'}" title="Export" aria-label="Export">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M12 3v12" stroke="#333" stroke-width="1.5"/>
                                 <path d="M8 7l4-4 4 4" stroke="#333" stroke-width="1.5" fill="none"/>
                                 <rect x="4" y="15" width="16" height="6" rx="2" stroke="#333" stroke-width="1.5" fill="none"/>
                             </svg>
                         </button>
-                        <div class="export-menu" id="personaExportMenu">
+                        <div class="export-menu" id="${title === 'Persona' ? 'personaExportMenu' : 'exportMenu'}">
                             <button class="export-option" data-format="pdf">📄 Export as PDF</button>
                             <button class="export-option" data-format="png">🖼️ Export as PNG</button>
                             <button class="export-option" data-format="jpeg">🖼️ Export as JPEG</button>

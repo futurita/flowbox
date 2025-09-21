@@ -12,6 +12,8 @@ const STATIC_FILES = [
   './favicon.svg',
   './logo.svg',
   './manifest.json',
+  './icons/app_icon.svg',
+  './icons/app_icon.png',
   // External libraries
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
