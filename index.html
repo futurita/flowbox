@@ -995,7 +995,24 @@
                     deferredPrompt = null;
                     hideInstallButton();
                 });
+            } else {
+                // Fallback: open App settings with installation instructions
+                openAppInstallSettings();
             }
+        }
+
+        // Helper to open Settings modal at App section
+        function openAppInstallSettings() {
+            try {
+                const settingsModal = document.getElementById('settingsModal');
+                if (settingsModal) {
+                    settingsModal.classList.add('show');
+                }
+                const appNavBtn = document.querySelector('.settings-nav-btn[data-settings-section="app"]');
+                if (appNavBtn) {
+                    appNavBtn.click();
+                }
+            } catch (e) { /* no-op */ }
         }
 
         function showUpdateNotification() {
@@ -1048,6 +1065,18 @@
             // Hide install button if already installed
             hideInstallButton();
         }
+
+        // Fallback: if not installed and secure context, show floating button even if
+        // beforeinstallprompt didn't fire, so users can access install instructions
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+                const isSecure = window.location.protocol === 'https:';
+                if (!isStandalone && isSecure) {
+                    showInstallButton();
+                }
+            }, 1500);
+        });
 
         // App Settings functionality
         function setupAppSettings() {
