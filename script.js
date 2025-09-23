@@ -6534,7 +6534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply persisted theme on load
     try {
         const s = loadSettings();
-        applyTheme(s.theme || 'oled-dark');
+        applyTheme(s.theme || 'light');
     } catch {}
 });
 class FlowEditor {
@@ -11071,7 +11071,7 @@ function setupSettingsModal() {
     function syncFromSettings() {
         const s = loadSettings();
         tempSettings = {
-            theme: s.theme || 'oled-dark',
+            theme: s.theme || 'light',
             language: s.language || 'en-US',
             notifications: !!s.notifications,
             systemPrompt: s.systemPrompt || '',
