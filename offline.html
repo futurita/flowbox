@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowbox – Offline</title>
+    <meta name="description" content="Flowbox is currently offline. Please reconnect to continue.">
+    <meta name="theme-color" content="#2196f3">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <style>
+        html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, 'Sarabun', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif; }
+        .wrap { min-height: 100%; display: flex; align-items: center; justify-content: center; background: #f7f9fc; }
+        .card { background: #ffffff; border: 1px solid #e3f2fd; border-radius: 12px; padding: 24px; width: min(520px, 92vw); box-shadow: 0 10px 30px rgba(33,150,243,0.08); }
+        .head { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
+        .logo { width: 28px; height: 28px; }
+        h1 { margin: 0; font-size: 18px; }
+        p { color: #444; line-height: 1.6; }
+        .tips { background: #fff3e0; border: 1px solid #ffcc02; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 14px; }
+        .actions { display:flex; gap:10px; margin-top: 16px; }
+        .btn { appearance: none; border: 1px solid #2196f3; background: #2196f3; color: #fff; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn.secondary { background: #fff; color: #2196f3; }
+        .small { color: #666; font-size: 12px; margin-top: 10px; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var retryBtn = document.getElementById('retry');
+            var openAppBtn = document.getElementById('open-app');
+            if (retryBtn) retryBtn.addEventListener('click', function() { window.location.reload(); });
+            if (openAppBtn) openAppBtn.addEventListener('click', function() { window.location.href = './'; });
+        });
+    </script>
+    <noscript><style>.btn{display:none}</style></noscript>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    </head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="head">
+                <img class="logo" src="logo.svg" alt="Flowbox logo">
+                <h1>You're offline</h1>
+            </div>
+            <p>Flowbox can work offline once assets are cached, but it looks like we couldn't reach the network right now. Please check your connection and try again.</p>
+            <div class="tips">
+                Tip: After your first successful visit, most pages will be available offline. If you installed Flowbox as an app, just open it from your Applications or Dock.
+            </div>
+            <div class="actions">
+                <button id="retry" class="btn">Try again</button>
+                <button id="open-app" class="btn secondary">Go to Home</button>
+            </div>
+            <div class="small">Flowbox PWA</div>
+        </div>
+    </div>
+    
+</body>
+</html>
+
+

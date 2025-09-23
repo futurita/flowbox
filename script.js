@@ -11,6 +11,191 @@ const BASE_FLOW_VERSIONS_KEY = 'flowVersions';
 const BASE_PERSONAS_KEY = 'personasData';
 const BASE_ACTIVE_TAB_KEY = 'activeTab';
 
+// ===== Device storage (OPFS) sync for installed PWA =====
+// In browser mode: keep using localStorage only.
+// In installed PWA (standalone): mirror localStorage <-> OPFS (Origin Private File System) so data lives on device.
+const IS_STANDALONE = (function() {
+    try {
+        return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    } catch { return false; }
+})();
+
+const DEVICE_DIR_NAME = 'flowbox';
+const DEVICE_DATA_FILE = 'data.json';
+
+// Ask browser to make storage persistent to avoid eviction (installed app)
+(async function ensurePersistentStorage() {
+    try {
+        if (!IS_STANDALONE) return;
+        if (navigator.storage && navigator.storage.persist) {
+            await navigator.storage.persist();
+        }
+    } catch {}
+})();
+
+async function isOpfsAvailable() {
+    try { return !!(navigator.storage && navigator.storage.getDirectory); } catch { return false; }
+}
+
+async function getOpfsFileHandle() {
+    const root = await navigator.storage.getDirectory();
+    const appDir = await root.getDirectoryHandle(DEVICE_DIR_NAME, { create: true });
+    const fileHandle = await appDir.getFileHandle(DEVICE_DATA_FILE, { create: true });
+    return fileHandle;
+}
+
+async function readFromDeviceStorage() {
+    try {
+        if (!(await isOpfsAvailable())) return null;
+        const fh = await getOpfsFileHandle();
+        const file = await fh.getFile();
+        const text = await file.text();
+        if (!text) return null;
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
+async function writeToDeviceStorage(payload) {
+    try {
+        if (!(await isOpfsAvailable())) return false;
+        const fh = await getOpfsFileHandle();
+        const writable = await fh.createWritable();
+        await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+        await writable.close();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function collectLocalStorageSnapshot() {
+    // Reuse the same prefixes used for export/import
+    const prefixes = [
+        PROJECTS_KEY,
+        CURRENT_PROJECT_KEY,
+        BASE_STORAGE_KEY,
+        BASE_VERSIONS_KEY,
+        BASE_CHANGES_KEY,
+        BASE_COVER_KEY,
+        BASE_SETTINGS_KEY,
+        BASE_FLOW_KEY,
+        BASE_FLOW_VERSIONS_KEY,
+        BASE_ACTIVE_TAB_KEY,
+        BASE_PERSONAS_KEY
+    ];
+    const storage = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (prefixes.some(p => key === p || key.startsWith(p + ':'))) {
+            storage[key] = localStorage.getItem(key);
+        }
+    }
+    return { meta: { app: 'flowbox', source: 'opfs-mirror', exportedAt: new Date().toISOString() }, storage };
+}
+
+function applySnapshotToLocalStorage(storage) {
+    try {
+        const keys = Object.keys(storage || {});
+        // Remove existing keys in our namespace to avoid stale values
+        const namespaces = [
+            PROJECTS_KEY,
+            CURRENT_PROJECT_KEY,
+            BASE_STORAGE_KEY,
+            BASE_VERSIONS_KEY,
+            BASE_CHANGES_KEY,
+            BASE_COVER_KEY,
+            BASE_SETTINGS_KEY,
+            BASE_FLOW_KEY,
+            BASE_FLOW_VERSIONS_KEY,
+            BASE_ACTIVE_TAB_KEY,
+            BASE_PERSONAS_KEY
+        ];
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (namespaces.some(p => k === p || k.startsWith(p + ':'))) toRemove.push(k);
+        }
+        toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+        keys.forEach(k => { try { localStorage.setItem(k, storage[k]); } catch {} });
+    } catch {}
+}
+
+async function hydrateFromDeviceIfStandalone() {
+    try {
+        if (!IS_STANDALONE) return;
+        if (!(await isOpfsAvailable())) return;
+        const devicePayload = await readFromDeviceStorage();
+        if (devicePayload && devicePayload.storage) {
+            applySnapshotToLocalStorage(devicePayload.storage);
+            // Ensure early inline scripts see hydrated state (only once per session)
+            try {
+                if (!sessionStorage.getItem('flowboxHydrated')) {
+                    sessionStorage.setItem('flowboxHydrated', '1');
+                    location.reload();
+                }
+            } catch {}
+        } else {
+            // Initialize device storage with current local snapshot
+            await writeToDeviceStorage(collectLocalStorageSnapshot());
+        }
+    } catch {}
+}
+
+// Setup mirroring of localStorage -> device storage (debounced) when in standalone
+(async function setupDeviceMirroring() {
+    try {
+        if (!IS_STANDALONE) return;
+        if (!(await isOpfsAvailable())) return;
+
+        // Hydrate first
+        await hydrateFromDeviceIfStandalone();
+
+        let debounceTimer;
+        function scheduleMirror() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                try { await writeToDeviceStorage(collectLocalStorageSnapshot()); } catch {}
+            }, 200);
+        }
+
+        const originalSetItem = localStorage.setItem.bind(localStorage);
+        const originalRemoveItem = localStorage.removeItem.bind(localStorage);
+        const originalClear = localStorage.clear.bind(localStorage);
+
+        localStorage.setItem = function(key, value) {
+            const result = originalSetItem(key, value);
+            try { scheduleMirror(); } catch {}
+            return result;
+        };
+        localStorage.removeItem = function(key) {
+            const result = originalRemoveItem(key);
+            try { scheduleMirror(); } catch {}
+            return result;
+        };
+        localStorage.clear = function() {
+            const result = originalClear();
+            try { scheduleMirror(); } catch {}
+            return result;
+        };
+
+        // Also mirror on visibility changes to be safe
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                try { writeToDeviceStorage(collectLocalStorageSnapshot()); } catch {}
+            }
+        });
+
+        // Expose manual sync for debugging
+        window.flowboxSyncToDeviceNow = async function() {
+            return await writeToDeviceStorage(collectLocalStorageSnapshot());
+        };
+    } catch {}
+})();
+
 // --- Device storage helpers (export/import to JSON on disk) ---
 async function exportAllAppDataToDevice() {
     try {

@@ -358,6 +358,12 @@
         })();
     </script>
     <div class="app">
+        <!-- Floating Install Button -->
+        <button id="floatingInstallBtn" title="Install Flowbox" aria-label="Install Flowbox"
+            style="position: fixed; right: 20px; bottom: 20px; z-index: 1100; display: none; border: none; background: #000; color: #fff; padding: 12px 14px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); cursor: pointer; font-weight: 600; gap: 8px; align-items: center;">
+            <span style="font-size:16px;">📱</span>
+            <span>Install</span>
+        </button>
         <!-- Expand button for collapsed sidebar -->
         <button class="expand-sidebar-btn" id="expandSidebarBtn" title="Expand sidebar" aria-label="Expand sidebar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -957,6 +963,7 @@
         // PWA Install Prompt
         let deferredPrompt;
         let installButton;
+        let floatingInstallBtn;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('PWA: Install prompt triggered');
@@ -966,12 +973,14 @@
             deferredPrompt = e;
             // Notify listeners that install is available (Settings UI will react)
             try { window.dispatchEvent(new CustomEvent('pwa-install-available')); } catch (err) {}
+            try { maybeToggleFloatingInstall(); } catch (err) {}
         });
 
         window.addEventListener('appinstalled', (evt) => {
             console.log('PWA: App was installed');
             deferredPrompt = null;
             try { window.dispatchEvent(new CustomEvent('pwa-installed')); } catch (err) {}
+            try { maybeToggleFloatingInstall(); } catch (err) {}
         });
 
         function installApp() {
@@ -987,6 +996,7 @@
                         console.log('PWA: User dismissed the install prompt');
                     }
                     deferredPrompt = null;
+                    try { maybeToggleFloatingInstall(); } catch (err) {}
                 });
             } else {
                 // Fallback: show a simple helper modal with exact steps per browser on macOS
@@ -1149,12 +1159,30 @@
 
         // Also hide install actions in Settings when running standalone
         document.addEventListener('DOMContentLoaded', () => {
+            floatingInstallBtn = document.getElementById('floatingInstallBtn');
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             if (isStandalone) {
                 const installSection = document.getElementById('installActions');
                 if (installSection) installSection.style.display = 'none';
+                if (floatingInstallBtn) floatingInstallBtn.style.display = 'none';
             }
+            if (floatingInstallBtn) floatingInstallBtn.addEventListener('click', installApp);
+            maybeToggleFloatingInstall();
         });
+
+        function isStandaloneMode() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function maybeToggleFloatingInstall() {
+            try {
+                if (!floatingInstallBtn) return;
+                const isHttps = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+                const canInstall = !!deferredPrompt;
+                const isStandalone = isStandaloneMode();
+                floatingInstallBtn.style.display = (!isStandalone && isHttps && canInstall) ? 'inline-flex' : 'none';
+            } catch {}
+        }
 
         // App Settings functionality
         function setupAppSettings() {

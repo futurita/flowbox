@@ -1,11 +1,12 @@
 // Service Worker for Flowbox PWA
-const CACHE_NAME = 'flowbox-v1.6.5';
-const STATIC_CACHE_NAME = 'flowbox-static-v1.6.5';
-const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.5';
+const CACHE_NAME = 'flowbox-v1.6.6';
+const STATIC_CACHE_NAME = 'flowbox-static-v1.6.6';
+const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.6';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
   './index.html',
+  './offline.html',
   './styles.css',
   './script.js',
   './components.js',
@@ -91,7 +92,9 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(async () => {
           const cached = await caches.match('./index.html');
-          return cached || Response.error();
+          if (cached) return cached;
+          const fallback = await caches.match('./offline.html');
+          return fallback || Response.error();
         })
     );
     return;
