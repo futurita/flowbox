@@ -10419,7 +10419,7 @@ class FlowBoards {
         emptyStateDiv.className = 'flow-empty-state';
         emptyStateDiv.innerHTML = `
             <div class="flow-empty-content">
-                <div class="flow-empty-icon">📊</div>
+                <div class="flow-empty-icon"><span class="material-icons-outlined" aria-hidden="true">insert_chart_outlined</span></div>
                 <h3>No Flow Boards Yet</h3>
                 <p>Create your first flow board to start mapping your processes and workflows.</p>
                 <button class="flow-create-first-board-btn" id="createFirstFlowBoard">

@@ -340,8 +340,8 @@
     </style>
 </head>
 <body>
-    <!-- Minimal splash screen -->
-    <div id="splashScreen" aria-hidden="true">
+    <!-- Minimal splash screen (injected only if not recently shown) -->
+    <div id="splashScreen" aria-hidden="true" style="display:none">
         <img src="logo.svg" alt="Flowbox" class="splash-logo" />
         <p class="splash-tagline">Flowbox — Design flows, delivered.</p>
     </div>
@@ -948,23 +948,45 @@
     <script src="script.js?v=1.8"></script>
     
     <script>
-        // Splash screen removal after 3 seconds
+        // Splash screen: show once per 24 hours
         (function() {
-            function hideSplash() {
+            var SPLASH_KEY = 'flowbox:splash:lastShownAt';
+            var ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            function shouldShowSplash() {
                 try {
-                    var el = document.getElementById('splashScreen');
-                    if (!el) return;
-                    el.classList.add('fade-out');
-                    el.addEventListener('transitionend', function onEnd() {
-                        el.removeEventListener('transitionend', onEnd);
-                        if (el && el.parentNode) { el.parentNode.removeChild(el); }
-                    });
-                } catch (e) { /* no-op */ }
+                    var last = parseInt(localStorage.getItem(SPLASH_KEY) || '0', 10);
+                    return !last || (Date.now() - last) > ONE_DAY_MS;
+                } catch (e) { return true; }
+            }
+            function markSplashShown() {
+                try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch (e) {}
+            }
+            function showSplashIfNeeded() {
+                var el = document.getElementById('splashScreen');
+                if (!el) return;
+                if (!shouldShowSplash()) {
+                    // never show; remove node
+                    if (el && el.parentNode) el.parentNode.removeChild(el);
+                    return;
+                }
+                // display and auto-hide
+                el.style.display = 'flex';
+                markSplashShown();
+                // hide after 3s
+                setTimeout(function hideSplash() {
+                    try {
+                        el.classList.add('fade-out');
+                        el.addEventListener('transitionend', function onEnd() {
+                            el.removeEventListener('transitionend', onEnd);
+                            if (el && el.parentNode) { el.parentNode.removeChild(el); }
+                        });
+                    } catch (e) {}
+                }, 3000);
             }
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                setTimeout(hideSplash, 3000);
+                showSplashIfNeeded();
             } else {
-                document.addEventListener('DOMContentLoaded', function() { setTimeout(hideSplash, 3000); });
+                document.addEventListener('DOMContentLoaded', showSplashIfNeeded);
             }
         })();
     </script>
