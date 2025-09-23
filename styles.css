@@ -1329,6 +1329,17 @@ body.sidebar-collapsed .toc { padding-top: 56px; } /* align with 12px top + 40px
     box-sizing: border-box;
 }
 
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+    background: transparent;
+}
+
 .empty-state-content {
     text-align: center;
     max-width: 400px;

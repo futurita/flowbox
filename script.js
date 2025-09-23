@@ -1144,7 +1144,7 @@ function renderEmptyPersonasState() {
     
     mount.innerHTML = `
         <div class="personas-container" id="personasContainer">
-            <div class="persona-empty-state">
+            <div class="persona-empty-state empty-state">
                 <div class="empty-state-content">
                     <div class="empty-state-icon"><span class="material-icons-outlined" aria-hidden="true">person</span></div>
                     <h3>No Personas Yet</h3>
@@ -2690,51 +2690,23 @@ function showEmptyPersonasState() {
     
     // Show empty state message
     const emptyStateHTML = `
-        <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 400px;
-            text-align: center;
-            color: #6b7280;
-            padding: 2rem;
-        ">
-            <div style="
-                font-size: 4rem;
-                margin-bottom: 1rem;
-                opacity: 0.5;
-            "><span class=\"material-icons-outlined\" aria-hidden=\"true\">person</span></div>
-            <h3 style="
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin-bottom: 0.5rem;
-                color: #374151;
-            ">No Personas</h3>
-            <p style="
-                font-size: 1rem;
-                margin-bottom: 2rem;
-                max-width: 400px;
-                line-height: 1.5;
-            ">You haven't created any personas yet. Click the "Add Persona" button to get started.</p>
-            <button id="addFirstPersona" style="
-                background: #3b82f6;
-                color: white;
-                border: none;
-                padding: 0.75rem 1.5rem;
-                border-radius: 0.5rem;
-                font-size: 1rem;
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.2s;
-            " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'" onclick="addFirstPersona()">
-                Add Your First Persona
-            </button>
+        <div class="empty-state">
+            <div class="empty-state-content">
+                <div class="empty-state-icon"><span class="material-icons-outlined" aria-hidden="true">person</span></div>
+                <h3>No Personas</h3>
+                <p>You haven't created any personas yet. Click the button below to get started.</p>
+                <button id="addFirstPersona" class="btn"><span>+</span> Add Your First Persona</button>
+            </div>
         </div>
     `;
     
     if (container) {
         container.innerHTML = emptyStateHTML;
+    }
+
+    const addBtn = document.getElementById('addFirstPersona');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => addFirstPersona());
     }
 }
 
@@ -10416,15 +10388,13 @@ class FlowBoards {
         
         // Create empty state UI
         const emptyStateDiv = document.createElement('div');
-        emptyStateDiv.className = 'flow-empty-state';
+        emptyStateDiv.className = 'flow-empty-state empty-state';
         emptyStateDiv.innerHTML = `
-            <div class="flow-empty-content">
-                <div class="flow-empty-icon"><span class="material-icons-outlined" aria-hidden="true">insert_chart_outlined</span></div>
+            <div class="empty-state-content">
+                <div class="empty-state-icon"><span class="material-icons-outlined" aria-hidden="true">insert_chart_outlined</span></div>
                 <h3>No Flow Boards Yet</h3>
                 <p>Create your first flow board to start mapping your processes and workflows.</p>
-                <button class="flow-create-first-board-btn" id="createFirstFlowBoard">
-                    Create First Flow Board
-                </button>
+                <button class="btn" id="createFirstFlowBoard"><span>+</span> Create First Flow Board</button>
             </div>
         `;
         
