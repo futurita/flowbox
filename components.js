@@ -72,9 +72,9 @@ window.Components.renderContentNavbar = function renderContentNavbar(mountId, ti
                             </svg>
                         </button>
                         <div class="export-menu" id="${title === 'Persona' ? 'personaExportMenu' : 'exportMenu'}">
-                            <button class="export-option" data-format="pdf">📄 Export as PDF</button>
-                            <button class="export-option" data-format="png">🖼️ Export as PNG</button>
-                            <button class="export-option" data-format="jpeg">🖼️ Export as JPEG</button>
+                            <button class="export-option" data-format="pdf"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">picture_as_pdf</span>Export as PDF</button>
+                            <button class="export-option" data-format="png"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as PNG</button>
+                            <button class="export-option" data-format="jpeg"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as JPEG</button>
                             <button class="export-option" data-format="csv">📊 Export as CSV</button>
                         </div>
                     </div>
@@ -114,7 +114,7 @@ window.Components.renderCover = function renderCover(mountId) {
                     <input type="file" id="coverImageInput" accept="image/*" style="display: none;">
                     <div class="file-upload-area" id="coverUploadArea">
                         <div class="file-upload-content">
-                            <div class="upload-icon">🖼️</div>
+                            <div class="upload-icon"><span class="material-icons-outlined" aria-hidden="true">image</span></div>
                             <p>Click to upload a cover image</p>
                             <small>Supports JPG, PNG, GIF, WebP (Max 5MB)</small>
                         </div>
@@ -242,9 +242,9 @@ window.Components.renderFlowNavbar = function renderFlowNavbar(mountId, flowType
                             </svg>
                         </button>
                         <div class="export-menu" id="flowExportMenu">
-                            <button class="export-option" data-format="pdf">📄 Export as PDF</button>
-                            <button class="export-option" data-format="jpeg">🖼️ Export as JPEG</button>
-                            <button class="export-option" data-format="png">🖼️ Export as PNG</button>
+                            <button class="export-option" data-format="pdf"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">picture_as_pdf</span>Export as PDF</button>
+                            <button class="export-option" data-format="jpeg"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as JPEG</button>
+                            <button class="export-option" data-format="png"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as PNG</button>
                             <button class="export-option" data-format="json">🧾 Export as JSON</button>
                         </div>
                     </div>

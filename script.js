@@ -1146,7 +1146,7 @@ function renderEmptyPersonasState() {
         <div class="personas-container" id="personasContainer">
             <div class="persona-empty-state">
                 <div class="empty-state-content">
-                    <div class="empty-state-icon">👤</div>
+                    <div class="empty-state-icon"><span class="material-icons-outlined" aria-hidden="true">person</span></div>
                     <h3>No Personas Yet</h3>
                     <p>Create your first persona to get started with user research and design planning.</p>
                     <button class="btn btn-primary" id="createFirstPersona">
@@ -1201,7 +1201,7 @@ function renderPersonasList() {
                     <div class="persona-header">
                         <div class="persona-photo">
                             <input type="file" class="persona-image-input" data-persona-id="${primaryPersona.id}" accept="image/*" style="display:none;" />
-                            <div class="persona-photo-upload" data-persona-id="${primaryPersona.id}" title="Click to add a photo">📷 Add Photo</div>
+                            <div class="persona-photo-upload" data-persona-id="${primaryPersona.id}" title="Click to add a photo"><span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">add_a_photo</span> Add Photo</div>
                             <img class="persona-photo-img" data-persona-id="${primaryPersona.id}" alt="Persona Photo" style="display:none;" />
                             <button class="remove-image-btn persona-remove-photo" data-persona-id="${primaryPersona.id}" style="display:none;">Remove</button>
                         </div>
@@ -1232,8 +1232,8 @@ function renderPersonasList() {
                                 </svg>
                             </button>
                             <div class="persona-menu-dropdown" data-persona-id="${primaryPersona.id}">
-                                <button class="persona-menu-item export" data-action="export-png" data-persona-id="${primaryPersona.id}">📷 Export as PNG</button>
-                                <button class="persona-menu-item delete" data-action="delete" data-persona-id="${primaryPersona.id}">🗑️ Delete Persona</button>
+                                <button class="persona-menu-item export" data-action="export-png" data-persona-id="${primaryPersona.id}"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as PNG</button>
+                                <button class="persona-menu-item delete" data-action="delete" data-persona-id="${primaryPersona.id}"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">delete</span>Delete Persona</button>
                             </div>
                         </div>
                     </div>
@@ -1744,10 +1744,10 @@ function showToast(message, type = 'info', duration = 3000) {
 
 function getToastIcon(type) {
     const icons = {
-        success: '✅',
+        success: '',
         warning: '⚠️',
         error: '❌',
-        info: 'ℹ️'
+        info: ''
     };
     return icons[type] || icons.info;
 }
@@ -1854,7 +1854,7 @@ function handlePhotoUpload(event, personaId) {
             showToast('Error uploading photo', 'error');
             // Reset upload state
             if (photoUpload) {
-                photoUpload.textContent = '📷 Add Photo';
+                photoUpload.innerHTML = '<span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">add_a_photo</span> Add Photo';
                 photoUpload.style.opacity = '1';
             }
         }
@@ -1864,7 +1864,7 @@ function handlePhotoUpload(event, personaId) {
         showToast('Error reading image file', 'error');
         // Reset upload state
         if (photoUpload) {
-            photoUpload.textContent = '📷 Add Photo';
+            photoUpload.innerHTML = '<span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">add_a_photo</span> Add Photo';
             photoUpload.style.opacity = '1';
         }
     };
@@ -1882,7 +1882,7 @@ function removePersonaPhoto(personaId) {
             photoImg.src = '';
             photoImg.style.display = 'none';
             photoUpload.style.display = 'flex';
-            photoUpload.textContent = '📷 Add Photo'; // Reset text
+            photoUpload.innerHTML = '<span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">add_a_photo</span> Add Photo';
             removePhoto.style.display = 'none';
             
             // Remove image data
@@ -2704,7 +2704,7 @@ function showEmptyPersonasState() {
                 font-size: 4rem;
                 margin-bottom: 1rem;
                 opacity: 0.5;
-            ">👤</div>
+            "><span class=\"material-icons-outlined\" aria-hidden=\"true\">person</span></div>
             <h3 style="
                 font-size: 1.5rem;
                 font-weight: 600;
@@ -2901,7 +2901,7 @@ function appendExtraPersonaCard(container, persona) {
         <div class="persona-header">
             <div class="persona-photo">
                 <input type="file" class="personaImageInput" accept="image/*" style="display:none;" />
-                <div class="persona-photo-upload personaPhotoUpload" title="Click to add a photo">📷 Add Photo</div>
+                <div class="persona-photo-upload personaPhotoUpload" title="Click to add a photo"><span class=\"material-icons-outlined\" style=\"vertical-align:middle; margin-right:6px;\">add_a_photo</span> Add Photo</div>
                 <img class="personaPhoto" alt="Persona Photo" style="display:none;" />
                 <button class="remove-image-btn personaRemovePhoto" style="display:none;">Remove</button>
             </div>
@@ -2926,7 +2926,7 @@ function appendExtraPersonaCard(container, persona) {
                     </svg>
                 </button>
                 <div class="persona-menu-dropdown">
-                    <button class="persona-menu-item delete" data-action="delete">🗑️ Delete Persona</button>
+                    <button class="persona-menu-item delete" data-action="delete"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">delete</span>Delete Persona</button>
                 </div>
             </div>
         </div>
@@ -10535,13 +10535,13 @@ class FlowBoards {
                             </svg>
                         </button>
                         <div class="export-menu" data-flow="overlay-more-menu">
-                            <button class="export-option" data-flow="overlay-import-json">📥 Import JSON</button>
+                            <button class="export-option" data-flow="overlay-import-json"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">file_open</span>Import JSON</button>
                             <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
-                            <button class="export-option" data-flow="overlay-export-pdf">📄 Export as PDF</button>
-                            <button class="export-option" data-flow="overlay-export-png">🖼️ Export as PNG (no bg)</button>
-                            <button class="export-option" data-flow="overlay-export-json">🧾 Export as JSON</button>
+                            <button class="export-option" data-flow="overlay-export-pdf"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">picture_as_pdf</span>Export as PDF</button>
+                            <button class="export-option" data-flow="overlay-export-png"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">image</span>Export as PNG (no bg)</button>
+                            <button class="export-option" data-flow="overlay-export-json"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">description</span>Export as JSON</button>
                             <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
-                            <button class="export-option" data-flow="overlay-delete-board">🗑️ Delete Flow Board</button>
+                            <button class="export-option" data-flow="overlay-delete-board"><span class=\"material-icons-outlined\" style=\"font-size:18px; vertical-align:middle; margin-right:6px;\">delete</span>Delete Flow Board</button>
                         </div>
                     </div>
                 </div>

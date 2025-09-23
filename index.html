@@ -38,7 +38,7 @@
     <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-192x192.png">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=1.5">
+    <link rel="stylesheet" href="styles.css?v=1.6">
     
     <!-- Inline styles for color picker -->
     <style>
@@ -304,12 +304,47 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <!-- Libraries for export functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Splash screen styles -->
+    <style id="splash-styles">
+        #splashScreen {
+            position: fixed;
+            inset: 0;
+            background: #111010; /* match logo bg color */
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 14px;
+            z-index: 3000;
+            opacity: 1;
+            transition: opacity 400ms ease;
+        }
+        #splashScreen.fade-out { opacity: 0; pointer-events: none; }
+        #splashScreen .splash-logo { width: 80px; height: 80px; }
+        #splashScreen .splash-tagline {
+            margin: 0;
+            font-family: "Sarabun", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            font-size: 16px;
+            color: #ffffff;
+            opacity: 0.9;
+        }
+    </style>
 </head>
 <body>
+    <!-- Minimal splash screen -->
+    <div id="splashScreen" aria-hidden="true">
+        <img src="logo.svg" alt="Flowbox" class="splash-logo" />
+        <p class="splash-tagline">Flowbox — Design flows, delivered.</p>
+    </div>
     <!-- Drag region for installed PWA when using window-controls-overlay -->
     <div id="appDragArea" class="app-drag-area" hidden></div>
     <script>
@@ -361,7 +396,7 @@
         <!-- Floating Install Button -->
         <button id="floatingInstallBtn" title="Install Flowbox" aria-label="Install Flowbox"
             style="position: fixed; right: 20px; bottom: 20px; z-index: 1100; display: none; border: none; background: #000; color: #fff; padding: 12px 14px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); cursor: pointer; font-weight: 600; gap: 8px; align-items: center;">
-            <span style="font-size:16px;">📱</span>
+            <span class="material-icons-outlined" style="font-size:18px;">install_mobile</span>
             <span>Install</span>
         </button>
         <!-- Expand button for collapsed sidebar -->
@@ -394,7 +429,7 @@
             <div class="project-list" id="projectList"></div>
             <div class="sidebar-bottom" id="sidebarBottom">
                 <div class="profile-row">
-                    <div class="avatar" id="profileAvatar" aria-hidden="true">👤</div>
+                    <div class="avatar" id="profileAvatar" aria-hidden="true"><span class="material-icons-outlined" aria-hidden="true">person</span></div>
                     <div class="profile-info">
                         <div class="profile-name" id="profileName">You</div>
                         <button class="status-toggle" id="settingsStatusBtn" aria-pressed="false" title="Toggle setting status">Status: Inactive</button>
@@ -431,12 +466,12 @@
                                 </svg>
                             </button>
                             <div class="toc-menu" id="tocMenu">
-                                <button class="toc-menu-item" id="tocExportJSONBtn">📄 Export as JSON</button>
-                                <button class="toc-menu-item" id="tocExportPDFBtn">📄 Export as PDF</button>
-                                <button class="toc-menu-item" id="tocExportPNGBtn">🖼️ Export as PNG</button>
-                                <button class="toc-menu-item" id="tocExportJPEGBtn">🖼️ Export as JPEG</button>
+                                <button class="toc-menu-item" id="tocExportJSONBtn"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">description</span>Export as JSON</button>
+                                <button class="toc-menu-item" id="tocExportPDFBtn"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">picture_as_pdf</span>Export as PDF</button>
+                                <button class="toc-menu-item" id="tocExportPNGBtn"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as PNG</button>
+                                <button class="toc-menu-item" id="tocExportJPEGBtn"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">image</span>Export as JPEG</button>
                                 <div class="toc-menu-separator"></div>
-                                <button class="toc-menu-item danger" id="tocDeleteProjectBtn">🗑️ Delete Project</button>
+                                <button class="toc-menu-item danger" id="tocDeleteProjectBtn"><span class="material-icons-outlined" style="font-size:18px; vertical-align:middle; margin-right:6px;">delete</span>Delete Project</button>
                             </div>
                         </div>
                     </div>
@@ -516,20 +551,20 @@
                 <!-- Control panel -->
                 <div class="cover-controls">
                     <button class="cover-upload-btn" id="coverUploadBtn">
-                        📷 Upload Cover Photo
+                        <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">add_a_photo</span> Upload Cover Photo
                     </button>
                     <div class="blur-control">
                         <span>Blur:</span>
                         <input type="range" class="blur-slider" id="blurSlider" min="0" max="20" value="0">
                     </div>
                     <button class="overlay-toggle" id="overlayToggle">
-                        🌙 Dark Overlay
+                        <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">dark_mode</span> Dark Overlay
                     </button>
                 </div>
                 
                 <!-- Upload area (hidden by default) -->
                 <div class="cover-upload-area" id="coverUploadArea">
-                    <div class="cover-upload-icon">📁</div>
+                <div class="cover-upload-icon"><span class="material-icons-outlined" aria-hidden="true">upload_file</span></div>
                     <div class="cover-upload-text">Click to upload cover photo<br><small>or drag and drop</small></div>
                 </div>
                 
@@ -741,15 +776,15 @@
                                 <div class="settings-control">
                                     <div class="install-status" id="installStatus">
                                         <div class="status-indicator" id="statusIndicator">
-                                            <span class="status-icon">📱</span>
+                                            <span class="status-icon material-icons-outlined" aria-hidden="true">install_mobile</span>
                                             <span class="status-text" id="statusText">Checking...</span>
                                         </div>
                                         <div class="install-actions" id="installActions" style="margin-top: 10px;">
                                             <button class="btn btn-primary" id="installAppBtn" style="display: inline-block;">
-                                                📱 Install Flowbox App
+                                                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">install_mobile</span> Install Flowbox App
                                             </button>
                                             <button class="btn btn-secondary" id="openAppBtn" style="display: none;">
-                                                🚀 Open as App
+                                                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">open_in_new</span> Open as App
                                             </button>
                                         </div>
                                     </div>
@@ -761,19 +796,19 @@
                                 <div class="settings-control">
                                     <div class="benefits-list">
                                         <div class="benefit-item">
-                                            <span class="benefit-icon">⚡</span>
+                                            <span class="benefit-icon material-icons-outlined" aria-hidden="true">bolt</span>
                                             <span class="benefit-text">Faster loading and offline access</span>
                                         </div>
                                         <div class="benefit-item">
-                                            <span class="benefit-icon">🖥️</span>
+                                            <span class="benefit-icon material-icons-outlined" aria-hidden="true">apps</span>
                                             <span class="benefit-text">Appears in your Applications folder</span>
                                         </div>
                                         <div class="benefit-item">
-                                            <span class="benefit-icon">🔔</span>
+                                            <span class="benefit-icon material-icons-outlined" aria-hidden="true">notifications</span>
                                             <span class="benefit-text">Native notifications and updates</span>
                                         </div>
                                         <div class="benefit-item">
-                                            <span class="benefit-icon">💾</span>
+                                            <span class="benefit-icon material-icons-outlined" aria-hidden="true">save</span>
                                             <span class="benefit-text">All your data stays local and secure</span>
                                         </div>
                                     </div>
@@ -822,7 +857,7 @@
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Offline:</span>
-                                            <span class="info-value">✅ Supported</span>
+                                            <span class="info-value"><span class="material-icons-outlined" style="font-size:16px; vertical-align:middle; margin-right:4px;">offline_pin</span> Supported</span>
                                         </div>
                                     </div>
                                 </div>
@@ -832,7 +867,7 @@
                                 <div class="settings-label">Device Storage</div>
                                 <div class="settings-control">
                                     <div class="install-actions">
-                                        <button class="btn btn-secondary" id="saveToDeviceBtn">💾 Save to Device</button>
+                                        <button class="btn btn-secondary" id="saveToDeviceBtn"><span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">save_alt</span> Save to Device</button>
                                         <button class="btn btn-secondary" id="loadFromDeviceBtn">📂 Load from Device</button>
                                     </div>
                                 </div>
@@ -886,9 +921,9 @@
                     <div class="form-group">
                         <label for="imageFileInput">Upload Image</label>
                         <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
-                        <div class="file-upload-area" id="fileUploadArea">
-                            <div class="file-upload-content">
-                                <div class="upload-icon">📁</div>
+                            <div class="file-upload-area" id="fileUploadArea">
+                                <div class="file-upload-content">
+                                    <div class="upload-icon"><span class="material-icons-outlined" aria-hidden="true">upload_file</span></div>
                                 <p>Click to select an image file</p>
                                 <small>Supports JPG, PNG, GIF, WebP (Max 5MB)</small>
                             </div>
@@ -909,10 +944,29 @@
         </div>
     </div>
 
-    <script src="components.js?v=1.1"></script>
-    <script src="script.js?v=1.6"></script>
+    <script src="components.js?v=1.2"></script>
+    <script src="script.js?v=1.7"></script>
     
     <script>
+        // Splash screen removal after 3 seconds
+        (function() {
+            function hideSplash() {
+                try {
+                    var el = document.getElementById('splashScreen');
+                    if (!el) return;
+                    el.classList.add('fade-out');
+                    el.addEventListener('transitionend', function onEnd() {
+                        el.removeEventListener('transitionend', onEnd);
+                        if (el && el.parentNode) { el.parentNode.removeChild(el); }
+                    });
+                } catch (e) { /* no-op */ }
+            }
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                setTimeout(hideSplash, 3000);
+            } else {
+                document.addEventListener('DOMContentLoaded', function() { setTimeout(hideSplash, 3000); });
+            }
+        })();
     </script>
     
     <!-- PWA Service Worker Registration -->
@@ -1126,7 +1180,7 @@
             `;
             updateNotification.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span>🔄 New version available!</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px;"><span class="material-icons-outlined" style="font-size:18px;">autorenew</span> New version available!</span>
                     <button id="update-btn" style="background: white; color: #4caf50; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Update</button>
                     <button id="close-update-btn" style="background: transparent; color: white; border: none; cursor: pointer; font-size: 16px;">&times;</button>
                 </div>
@@ -1298,20 +1352,26 @@
                 const { isMac, isSafari } = getBrowserInfo();
 
                 if (isStandalone) {
-                    statusText.textContent = '✅ Installed and running as app';
-                    statusIcon.textContent = '✅';
+                    statusText.textContent = 'Installed and running as app';
+                    statusIcon.textContent = '';
+                    if (statusIcon && statusIcon.classList) statusIcon.classList.add('material-icons-outlined');
+                    if (statusIcon) statusIcon.textContent = 'check_circle';
                     statusText.className = 'status-text status-installed';
                     installAppBtn.style.display = 'none';
                     openAppBtn.style.display = 'inline-block';
                 } else if (canInstall && !(isMac && isSafari)) {
-                    statusText.textContent = '📱 Ready to install as app';
-                    statusIcon.textContent = '📱';
+                    statusText.textContent = 'Ready to install as app';
+                    statusIcon.textContent = '';
+                    if (statusIcon && statusIcon.classList) statusIcon.classList.add('material-icons-outlined');
+                    if (statusIcon) statusIcon.textContent = 'install_mobile';
                     statusText.className = 'status-text status-available';
                     installAppBtn.style.display = 'inline-block';
                     openAppBtn.style.display = 'none';
                 } else {
-                    statusText.textContent = (isMac && isSafari) ? 'ℹ️ Use Safari → File → Add to Dock…' : 'ℹ️ Use browser menu to install';
-                    statusIcon.textContent = 'ℹ️';
+                    statusText.textContent = (isMac && isSafari) ? 'Use Safari → File → Add to Dock…' : 'Use browser menu to install';
+                    statusIcon.textContent = '';
+                    if (statusIcon && statusIcon.classList) statusIcon.classList.add('material-icons-outlined');
+                    if (statusIcon) statusIcon.textContent = 'info';
                     statusText.className = 'status-text';
                     // Keep install button visible to open instructions
                     if (installAppBtn) installAppBtn.style.display = (isMac && isSafari) ? 'none' : 'inline-block';
