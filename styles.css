@@ -3606,6 +3606,15 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
 .flow-node .label[contenteditable="true"] { cursor: text; user-select: text; }
 .flow-node .label:empty::before { content: attr(data-placeholder); color: rgba(0,0,0,0.65); }
 .flow-node .label[contenteditable="true"] { cursor: text; user-select: text; }
+/* Color variants for process/action nodes */
+.flow-node:not(.decision):not(.start).color-white { background: #ffffff; border-color: #d0d0d0; color: #333; }
+.flow-node:not(.decision):not(.start).color-white .label { color: #333; }
+.flow-node:not(.decision):not(.start).color-red { background: #FFCDD2; border-color: #C62828; color: #C62828; }
+.flow-node:not(.decision):not(.start).color-red .label { color: #C62828; }
+.flow-node:not(.decision):not(.start).color-blue { background: #B3E5FC; border-color: #1565C0; color: #1565C0; }
+.flow-node:not(.decision):not(.start).color-blue .label { color: #1565C0; }
+.flow-node:not(.decision):not(.start).color-green { background: #C8E6C9; border-color: #2E7D32; color: #2E7D32; }
+.flow-node:not(.decision):not(.start).color-green .label { color: #2E7D32; }
 /* Revert decision nodes to diamond shape with fixed square area */
 .flow-node.decision { 
     background: transparent; 
@@ -3948,6 +3957,15 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
 
 .flow-node.is-hover .drag-handle { opacity: 1 !important; }
 .flow-node.selected .drag-handle { opacity: 1 !important; }
+
+/* Floating color picker shown when a process node is selected */
+.node-color-picker { position: absolute; display: flex; gap: 6px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 6px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); z-index: 1001; pointer-events: auto; }
+.node-color-picker .color-swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #ffffff; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); cursor: pointer; }
+.node-color-picker .color-swatch[data-color="white"] { background: #ffffff; }
+.node-color-picker .color-swatch[data-color="red"] { background: #FFCDD2; }
+.node-color-picker .color-swatch[data-color="blue"] { background: #B3E5FC; }
+.node-color-picker .color-swatch[data-color="green"] { background: #C8E6C9; }
+.node-color-picker .color-swatch.active { outline: 2px solid #2196f3; box-shadow: 0 0 0 3px rgba(33,150,243,0.2); }
 
 /* Success Toast - Minimal Black/White Design */
 .success-toast {

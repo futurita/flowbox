@@ -722,7 +722,6 @@ function cropImageToSquare(imageSrc, size = 160) {
         img.src = imageSrc;
     });
 }
-
 // Export individual persona as PNG
 function exportPersonaAsPNG(personaId) {
     try {
@@ -1510,7 +1509,6 @@ function setupPersonaEventListeners() {
         }
     });
 }
-
 function setupPersonaBoardEventListeners() {
     // Board title editing for all boards
     const boardTitles = document.querySelectorAll('.persona-board-title');
@@ -2308,7 +2306,6 @@ function exportPersonasAsPDF() {
         alert('Error exporting as PDF. Please try again.');
     }
 }
-
 // Export personas view as JPEG
 function exportPersonasAsJPEG() {
     try {
@@ -3087,7 +3084,6 @@ function ensureFlowDataStructure(data) {
         gridEnabled: data?.gridEnabled !== undefined ? data.gridEnabled : true
     };
 }
-
 function loadFlowData() {
     try {
         const data = localStorage.getItem(getScopedKey(BASE_FLOW_KEY));
@@ -3882,7 +3878,6 @@ class JourneyMap {
             if (header) header.classList.remove('column-highlighted');
         }
     }
-
     showColumnDropZone(targetHeader) {
         // Clear previous drop zones
         this.clearColumnDropZones();
@@ -4678,7 +4673,6 @@ class JourneyMap {
             console.warn('Export button or dropdown not found');
         }
     }
-
     // Parse CSV text and merge into journeyData
     importFromCSV(csvText) {
         try {
@@ -7088,7 +7082,8 @@ class FlowEditor {
             kind, 
             label: kind === 'process' ? 'Process' : kind === 'decision' ? 'Decision' : 'Start', 
             x, 
-            y 
+            y,
+            color: (kind === 'process') ? 'white' : undefined
         };
         this.pushHistory();
         this.state.nodes.push(node);
@@ -7145,6 +7140,8 @@ class FlowEditor {
         this.updateNodeConnectors(id);
         
         this.updateToolbarState();
+        // Refresh color picker for this selection
+        this.setupNodeColorPicker();
     }
 
     // Helper method to clear drag setup timers and candidates
@@ -7160,6 +7157,8 @@ class FlowEditor {
     clearNodeSelections() {
         if (this.grid) {
             this.grid.querySelectorAll('.flow-node').forEach(n => n.classList.remove('selected'));
+            const picker = document.getElementById('nodeColorPicker');
+            if (picker && picker.parentNode) picker.parentNode.removeChild(picker);
         }
     }
 
@@ -7293,7 +7292,6 @@ class FlowEditor {
         this.updateToolbarState();
         console.log('Undo completed');
     }
-
     redo() {
         console.log('redo() called, future length:', this.future.length);
         if (!this.future.length) {
@@ -7308,7 +7306,6 @@ class FlowEditor {
         this.updateToolbarState();
         console.log('Redo completed');
     }
-
     persist() { 
         saveFlowData(this.state);
         // Also save all boards if this is part of a multi-board system
@@ -7366,6 +7363,68 @@ class FlowEditor {
         if (titleElement && this.state.title) {
             titleElement.textContent = this.state.title;
         }
+    }
+
+    // Color helpers for process/action nodes
+    getNodeColorClass(node) {
+        const c = (node && typeof node.color === 'string') ? node.color : 'white';
+        if (c === 'red') return 'color-red';
+        if (c === 'blue') return 'color-blue';
+        if (c === 'green') return 'color-green';
+        return 'color-white';
+    }
+    applyNodeColorClass(el, node) {
+        if (!el || !node) return;
+        el.classList.remove('color-white', 'color-red', 'color-blue', 'color-green');
+        el.classList.add(this.getNodeColorClass(node));
+    }
+    setupNodeColorPicker() {
+        try {
+            const selected = this.grid ? this.grid.querySelector('.flow-node.selected') : null;
+            if (!selected || selected.classList.contains('decision') || selected.classList.contains('start')) {
+                const existing = document.getElementById('nodeColorPicker');
+                if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+                return;
+            }
+            let picker = document.getElementById('nodeColorPicker');
+            if (!picker) {
+                picker = document.createElement('div');
+                picker.id = 'nodeColorPicker';
+                picker.className = 'node-color-picker';
+                picker.innerHTML = ['white','red','blue','green'].map(c => `<div class="color-swatch" data-color="${c}" title="${c}"></div>`).join('');
+                picker.addEventListener('click', (e) => {
+                    const sw = e.target && e.target.closest && e.target.closest('.color-swatch');
+                    if (!sw) return;
+                    const color = sw.getAttribute('data-color');
+                    const id = selected.getAttribute('data-id');
+                    const node = (this.state.nodes || []).find(n => n.id === id);
+                    if (!node) return;
+                    if (node.kind === 'decision' || node.kind === 'start') return;
+                    this.pushHistory();
+                    node.color = color;
+                    this.persist();
+                    this.applyNodeColorClass(selected, node);
+                    picker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    sw.classList.add('active');
+                });
+                picker.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+                document.body.appendChild(picker);
+            }
+            const nodeId = selected.getAttribute('data-id');
+            const node = (this.state.nodes || []).find(n => n.id === nodeId);
+            const current = (node && node.color) ? node.color : 'white';
+            picker.querySelectorAll('.color-swatch').forEach(s => {
+                if (s.getAttribute('data-color') === current) s.classList.add('active');
+                else s.classList.remove('active');
+            });
+            const nodeRect = selected.getBoundingClientRect();
+            const pickerRect = picker.getBoundingClientRect();
+            const margin = 6;
+            const top = Math.max(0, nodeRect.top - pickerRect.height - margin);
+            const left = Math.max(0, nodeRect.left + (nodeRect.width / 2) - (pickerRect.width / 2));
+            picker.style.top = `${Math.round(top)}px`;
+            picker.style.left = `${Math.round(left)}px`;
+        } catch {}
     }
 
     
@@ -8074,7 +8133,6 @@ class FlowEditor {
             }
         }, 4000);
     }
-
     importJSONFile(file) {
         if (!file) {
             console.log('No file provided to importJSONFile');
@@ -8508,7 +8566,8 @@ class FlowEditor {
         const snappedPos = new Map();
         this.state.nodes.forEach(n => {
             const el = document.createElement('div');
-            el.className = 'flow-node' + (n.kind === 'decision' ? ' decision' : n.kind === 'start' ? ' start' : '');
+            const colorClass = (n.kind !== 'decision' && n.kind !== 'start') ? (' ' + this.getNodeColorClass(n)) : '';
+            el.className = 'flow-node' + (n.kind === 'decision' ? ' decision' : n.kind === 'start' ? ' start' : '') + colorClass;
             el.dataset.id = n.id;
             // Accessibility
             el.setAttribute('role', 'group');
@@ -8786,6 +8845,8 @@ class FlowEditor {
         this.setupColumnHoverAdd();
 		// Ensure column drag listeners remain active
 		this.setupColumnDrag();
+        // Setup/refresh floating color picker near the selected node
+        this.setupNodeColorPicker();
     }
 
 	// Column drag to move entire column of nodes
@@ -8853,7 +8914,6 @@ class FlowEditor {
 		const rx = (e.clientX - rect.left) / zoom;
 		return Math.max(0, Math.floor(rx / this.columnWidth));
 	}
-
 	ensureColumnIndicators() {
 		if (!this.grid) return;
 		// Highlight for source column
