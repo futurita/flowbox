@@ -3323,6 +3323,8 @@ class JourneyMap {
         this.currentEditingColumn = null;
         this.draggedElement = null;
         this.draggedColumn = null;
+        // Suppress opening the column edit modal immediately after a column drag
+        this.suppressColumnEditClick = false;
         this.currentImageData = null;
         this.journeyData = loadJourneyData();
         this.init();
@@ -3616,6 +3618,7 @@ class JourneyMap {
     setupEventListeners() {
         // Column header click to edit
         document.addEventListener('click', (e) => {
+            if (this.suppressColumnEditClick) return; // ignore clicks immediately after dragging
             if (e.target.classList.contains('column-header') && !e.target.classList.contains('column-drag-handle') && !e.target.closest('.column-drag-handle')) {
                 this.openColumnEditModal(parseInt(e.target.dataset.column));
             }
@@ -3693,6 +3696,8 @@ class JourneyMap {
             if (e.target.classList.contains('column-drag-handle') || e.target.closest('.column-drag-handle')) {
                 const header = e.target.closest('.column-header');
                 if (header) {
+                    // Set suppression so the next click on header won't open modal
+                    this.suppressColumnEditClick = true;
                     this.draggedColumn = header;
                     this.draggedElement = null; // Clear cell dragging
                     header.classList.add('column-dragging');
@@ -3735,6 +3740,8 @@ class JourneyMap {
                     this.highlightColumn(parseInt(header.dataset.column), false);
                     this.clearColumnDropZones();
                 }
+                // Clear suppression after a short delay to ignore the immediate click
+                setTimeout(() => { this.suppressColumnEditClick = false; }, 50);
             }
             // Handle cell drag end
             else if (e.target.classList.contains('table-cell')) {
@@ -9039,7 +9046,7 @@ class FlowEditor {
 			this.render();
 			// Restore hover indicators after re-render
 			this.refreshColumnHoverUI();
-			this.toast(`Moved column ${sourceIndex + 1} to ${targetIndex + 1}`);
+			// Removed toast notification for column move per UX request
 		}
 	}
 
@@ -10364,20 +10371,8 @@ class FlowEditor {
     
     // Show connection success feedback
     showConnectionSuccess() {
-        // Create success toast
-        const toast = document.createElement('div');
-        toast.classList.add('success-toast');
-        toast.textContent = 'Connection created successfully!';
-        document.body.appendChild(toast);
-        
-        // Show toast
-        setTimeout(() => toast.classList.add('show'), 100);
-        
-        // Hide toast
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 2000);
+        // Toast disabled per UX: no modal/notification on connection create
+        return;
     }
     
     // Generate unique ID
