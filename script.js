@@ -10890,19 +10890,16 @@ class FlowBoards {
                     <button class="btn btn-secondary icon-only" data-flow="overlay-add" title="Add process" aria-label="Add process">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <rect x="4" y="6" width="16" height="12" rx="2" stroke="#333" stroke-width="1.5" fill="none"/>
-                            <path d="M12 9v6M9 12h6" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
                     </button>
                     <button class="btn btn-secondary icon-only" data-flow="overlay-add-decision" title="Add decision" aria-label="Add decision">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path d="M12 3l8 9-8 9-8-9 8-9z" stroke="#333" stroke-width="1.5" fill="none"/>
-                            <path d="M12 8v8M8 12h8" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
                     </button>
                     <button class="btn btn-secondary icon-only" data-flow="overlay-add-start" title="Add start" aria-label="Add start">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <circle cx="12" cy="12" r="9" stroke="#333" stroke-width="1.5" fill="none"/>
-                            <path d="M12 8v8M8 12h8" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
                     </button>
                 </div>
