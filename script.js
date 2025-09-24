@@ -6577,6 +6577,10 @@ class FlowEditor {
         }, 0);
         this.bindShortcuts();
         this.updateToolbarState();
+        // Setup hover add button per column
+        this.setupColumnHoverAdd();
+		// Setup column drag-and-drop behavior
+		this.setupColumnDrag();
         
         // Add click handler to ensure canvas gets focus for keyboard events
         if (this.wrap) {
@@ -8472,6 +8476,19 @@ class FlowEditor {
         // Nodes
         const grid = this.grid;
         grid.innerHTML = '';
+        // Preserve/re-attach floating UI elements after rerender
+        if (this.columnAddBtn && !grid.contains(this.columnAddBtn)) {
+            grid.appendChild(this.columnAddBtn);
+        }
+        if (this.columnDragBar && !grid.contains(this.columnDragBar)) {
+            grid.appendChild(this.columnDragBar);
+        }
+        if (this.columnHighlight && !grid.contains(this.columnHighlight)) {
+            grid.appendChild(this.columnHighlight);
+        }
+        if (this.columnDropLine && !grid.contains(this.columnDropLine)) {
+            grid.appendChild(this.columnDropLine);
+        }
         
         // Grid lines visualization
         if (this.gridEnabled) {
@@ -8764,7 +8781,207 @@ class FlowEditor {
         
         // Update SVG viewBox to match current grid dimensions
         this.updateSVGViewBox();
+
+        // Ensure column hover add stays active after rerenders
+        this.setupColumnHoverAdd();
+		// Ensure column drag listeners remain active
+		this.setupColumnDrag();
     }
+
+	// Column drag to move entire column of nodes
+	setupColumnDrag() {
+		if (!this.grid) return;
+		if (!this.columnDragConfig) {
+			this.columnDragConfig = { stripHeight: 48 };
+		}
+		this.ensureColumnDragBar();
+		if (!this._boundColumnPointerDown) {
+			this._boundColumnPointerDown = (e) => { this.onColumnPointerDown(e); };
+			this.grid.addEventListener('pointerdown', this._boundColumnPointerDown);
+		}
+		if (!this._boundColumnPointerMove) {
+			this._boundColumnPointerMove = (e) => { this.onColumnPointerMove(e); };
+			window.addEventListener('pointermove', this._boundColumnPointerMove);
+		}
+		if (!this._boundColumnPointerUp) {
+			this._boundColumnPointerUp = (e) => { this.onColumnPointerUp(e); };
+			window.addEventListener('pointerup', this._boundColumnPointerUp);
+		}
+	}
+
+	ensureColumnDragBar() {
+		if (!this.grid) return;
+		if (!this.columnDragBar) {
+			const bar = document.createElement('div');
+			bar.className = 'flow-column-drag-bar';
+			bar.style.position = 'absolute';
+			bar.style.top = '0px';
+			bar.style.height = this.columnDragConfig ? (this.columnDragConfig.stripHeight + 'px') : '48px';
+			bar.style.background = 'linear-gradient(180deg, rgba(33,150,243,0.15) 0%, rgba(33,150,243,0.08) 100%)';
+			bar.style.borderBottom = '1px solid rgba(33,150,243,0.35)';
+			bar.style.display = 'none';
+			bar.style.zIndex = '12';
+			bar.style.cursor = 'grab';
+			bar.style.pointerEvents = 'none';
+			// Decorative grabber dots
+			const dots = document.createElement('div');
+			dots.style.position = 'absolute';
+			dots.style.left = '50%';
+			dots.style.top = '8px';
+			dots.style.transform = 'translateX(-50%)';
+			dots.style.width = '40px';
+			dots.style.height = '4px';
+			dots.style.borderRadius = '4px';
+			dots.style.background = 'rgba(33,150,243,0.5)';
+			bar.appendChild(dots);
+			this.grid.appendChild(bar);
+			this.columnDragBar = bar;
+		}
+	}
+
+	isOverColumnDragStrip(e) {
+		if (!this.grid) return false;
+		const rect = this.grid.getBoundingClientRect();
+		const zoom = this.zoom || 1;
+		const ry = (e.clientY - rect.top) / zoom;
+		return ry >= 0 && ry <= this.columnDragConfig.stripHeight;
+	}
+
+	getColumnIndexAtEvent(e) {
+		const rect = this.grid.getBoundingClientRect();
+		const zoom = this.zoom || 1;
+		const rx = (e.clientX - rect.left) / zoom;
+		return Math.max(0, Math.floor(rx / this.columnWidth));
+	}
+
+	ensureColumnIndicators() {
+		if (!this.grid) return;
+		// Highlight for source column
+		if (!this.columnHighlight) {
+			const hl = document.createElement('div');
+			hl.className = 'flow-column-highlight';
+			hl.style.position = 'absolute';
+			hl.style.top = '0px';
+			hl.style.height = '100%';
+			hl.style.background = 'rgba(33,150,243,0.08)';
+			hl.style.borderLeft = '1px dashed #2196f3';
+			hl.style.borderRight = '1px dashed #2196f3';
+			hl.style.pointerEvents = 'none';
+			hl.style.zIndex = '10';
+			hl.style.display = 'none';
+			this.grid.appendChild(hl);
+			this.columnHighlight = hl;
+		}
+		// Drop indicator for target position
+		if (!this.columnDropLine) {
+			const dl = document.createElement('div');
+			dl.className = 'flow-column-drop-indicator';
+			dl.style.position = 'absolute';
+			dl.style.top = '0px';
+			dl.style.width = '2px';
+			dl.style.height = '100%';
+			dl.style.background = '#2196f3';
+			dl.style.boxShadow = '0 0 0 2px rgba(33,150,243,0.15)';
+			dl.style.pointerEvents = 'none';
+			dl.style.zIndex = '11';
+			dl.style.display = 'none';
+			this.grid.appendChild(dl);
+			this.columnDropLine = dl;
+		}
+	}
+
+	onColumnPointerDown(e) {
+		// Ignore if clicking a node or the add button
+		if (e.target && (e.target.closest && (e.target.closest('.flow-node') || e.target.closest('.flow-column-add-btn')))) return;
+		if (!this.isOverColumnDragStrip(e)) return;
+		// Capture mouse position for restoring indicators after move
+		this._lastGridMouse = { clientX: e.clientX, clientY: e.clientY };
+		this.ensureColumnIndicators();
+		const sourceIndex = this.getColumnIndexAtEvent(e);
+		this.columnDrag = { sourceIndex, currentIndex: sourceIndex, active: true };
+		// Show source highlight
+		if (this.columnHighlight) {
+			this.columnHighlight.style.left = (sourceIndex * this.columnWidth) + 'px';
+			this.columnHighlight.style.width = this.columnWidth + 'px';
+			this.columnHighlight.style.display = 'block';
+		}
+		// Initialize drop line
+		if (this.columnDropLine) {
+			this.columnDropLine.style.left = (sourceIndex * this.columnWidth) + 'px';
+			this.columnDropLine.style.display = 'block';
+		}
+		// Lock drag bar to source column
+		this.ensureColumnDragBar();
+		if (this.columnDragBar) {
+			this.columnDragBar.style.left = (sourceIndex * this.columnWidth) + 'px';
+			this.columnDragBar.style.width = this.columnWidth + 'px';
+			this.columnDragBar.style.display = 'block';
+			this.columnDragBar.style.cursor = 'grabbing';
+		}
+		e.preventDefault();
+	}
+
+	onColumnPointerMove(e) {
+		if (!this.columnDrag || !this.columnDrag.active) return;
+		const idx = this.getColumnIndexAtEvent(e);
+		this.columnDrag.currentIndex = idx;
+		if (this.columnDropLine) {
+			// Place drop line between target column and the next
+			const dropX = (idx * this.columnWidth);
+			this.columnDropLine.style.left = dropX + 'px';
+			this.columnDropLine.style.width = '2px';
+			this.columnDropLine.style.background = '#1ea1f2';
+			this.columnDropLine.style.boxShadow = '0 0 0 3px rgba(30,161,242,0.18)';
+		}
+		// Move drag bar with pointer for better feedback
+		if (this.columnDragBar) {
+			this.columnDragBar.style.left = (idx * this.columnWidth) + 'px';
+		}
+	}
+
+	onColumnPointerUp(e) {
+		if (!this.columnDrag || !this.columnDrag.active) return;
+		const { sourceIndex } = this.columnDrag;
+		const targetIndex = this.getColumnIndexAtEvent(e);
+		// Cleanup indicators
+        if (this.columnHighlight) this.columnHighlight.style.display = 'none';
+        if (this.columnDropLine) this.columnDropLine.style.display = 'none';
+        if (this.columnDragBar) { this.columnDragBar.style.display = 'none'; this.columnDragBar.style.cursor = 'grab'; }
+        // Preserve last mouse position for indicator restore
+        if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+            this._lastGridMouse = { clientX: e.clientX, clientY: e.clientY };
+        }
+		this.columnDrag.active = false;
+		if (typeof sourceIndex === 'number' && typeof targetIndex === 'number' && targetIndex !== sourceIndex) {
+			const deltaCols = targetIndex - sourceIndex;
+			const colW = this.columnWidth;
+			this.pushHistory();
+			(this.state.nodes || []).forEach((node) => {
+				const nx = typeof node.x === 'number' ? node.x : 0;
+				const col = Math.floor(nx / colW);
+				if (targetIndex > sourceIndex) {
+					// Moving right: pull intermediate columns left, push source to target
+					if (col === sourceIndex) {
+						node.x = Math.max(0, nx + (deltaCols * colW));
+					} else if (col > sourceIndex && col <= targetIndex) {
+						node.x = Math.max(0, nx - colW);
+					}
+				} else {
+					// Moving left: push intermediate columns right, pull source to target
+					if (col === sourceIndex) {
+						node.x = Math.max(0, nx - (Math.abs(deltaCols) * colW));
+					} else if (col >= targetIndex && col < sourceIndex) {
+						node.x = Math.max(0, nx + colW);
+					}
+				}
+			});
+			this.persist();
+			this.render();
+			// Restore hover indicators after re-render
+			this.refreshColumnHoverUI();
+			this.toast(`Moved column ${sourceIndex + 1} to ${targetIndex + 1}`);
+		}
+	}
 
     // Zoom controls
     applyZoom() {
@@ -8786,6 +9003,177 @@ class FlowEditor {
         
         // Update all connectors to maintain proper positioning
         this.scheduleEdgeUpdate();
+    }
+
+    // Insert an empty column at the given index and shift nodes to the right by one column
+    insertEmptyColumn(index) {
+        if (typeof index !== 'number' || index < 0) return;
+        const columnStartX = index * this.columnWidth;
+        this.pushHistory();
+        // Shift all nodes that start at or beyond the insertion column
+        (this.state.nodes || []).forEach((node) => {
+            if (typeof node.x === 'number' && node.x >= columnStartX) {
+                node.x += this.columnWidth;
+            }
+        });
+        // Persist and re-render connectors
+        this.persist();
+        this.render();
+        // Restore hover indicators to the current mouse position
+        this.refreshColumnHoverUI();
+        this.toast(`Inserted column ${index + 1}`);
+    }
+
+    // Create a floating add button that appears when hovering over a column
+    setupColumnHoverAdd() {
+        if (!this.grid) return;
+        // Reuse if already created
+        if (!this.columnAddBtn) {
+            const btn = document.createElement('button');
+            btn.className = 'flow-column-add-btn';
+            btn.setAttribute('aria-label', 'Insert column here');
+            btn.title = 'Insert column here';
+            btn.textContent = '+';
+            btn.style.position = 'absolute';
+            btn.style.top = '8px';
+            btn.style.left = '0px';
+            btn.style.width = '28px';
+            btn.style.height = '28px';
+            btn.style.lineHeight = '26px';
+            btn.style.borderRadius = '999px';
+            btn.style.border = '1px solid #e0e0e0';
+            btn.style.background = '#ffffff';
+            btn.style.color = '#333';
+            btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+            btn.style.cursor = 'pointer';
+            btn.style.display = 'none';
+            btn.style.zIndex = '20';
+            btn.style.pointerEvents = 'auto';
+            // Prevent click from bubbling into canvas interactions
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const idxStr = btn.getAttribute('data-col-index');
+                const idx = idxStr ? parseInt(idxStr, 10) : NaN;
+                if (!Number.isNaN(idx)) {
+                    this.insertEmptyColumn(idx);
+                }
+            });
+            this.grid.appendChild(btn);
+            this.columnAddBtn = btn;
+        }
+        // Bind hover handlers
+        if (!this._boundGridMouseMove) {
+            this._boundGridMouseMove = (e) => this.onGridMouseMove(e);
+            this.grid.addEventListener('mousemove', this._boundGridMouseMove);
+        }
+        if (!this._boundGridMouseLeave) {
+            this._boundGridMouseLeave = () => this.onGridMouseLeave();
+            this.grid.addEventListener('mouseleave', this._boundGridMouseLeave);
+        }
+        // Also hide indicators when leaving the flowboard wrap, not just the grid
+        this.canvasWrap = (this.wrap && this.wrap.querySelector) ? this.wrap.querySelector('.flow-canvas-wrap') : null;
+        if (this.canvasWrap && !this._boundWrapMouseLeave) {
+            this._boundWrapMouseLeave = () => this.onGridMouseLeave();
+            this.canvasWrap.addEventListener('mouseleave', this._boundWrapMouseLeave);
+        }
+    }
+
+    onGridMouseMove(e) {
+        if (!this.grid || !this.columnAddBtn) return;
+        // Track last mouse position to restore indicators after re-render
+        this._lastGridMouse = { clientX: e.clientX, clientY: e.clientY };
+        // Compute mouse position relative to grid, compensating for zoom
+        const rect = this.grid.getBoundingClientRect();
+        const zoom = this.zoom || 1;
+        const rx = (e.clientX - rect.left) / zoom;
+        const ry = (e.clientY - rect.top) / zoom;
+        const stripHeight = (this.columnDragConfig && this.columnDragConfig.stripHeight) || 48;
+        // Hide when out of bounds
+        if (rx < 0 || ry < 0 || rx > (parseInt(this.grid.style.width) || this.baseWidth) || ry > (parseInt(this.grid.style.height) || this.baseHeight)) {
+            if (this.columnAddBtn) this.columnAddBtn.style.display = 'none';
+            if (this.columnDragBar) this.columnDragBar.style.display = 'none';
+            if (this.columnDropLine) this.columnDropLine.style.display = 'none';
+            if (this.columnHighlight) this.columnHighlight.style.display = 'none';
+            return;
+        }
+        // Determine column index
+        let colIndex = Math.floor(rx / this.columnWidth);
+        if (colIndex < 0) colIndex = 0;
+        const centerX = (colIndex * this.columnWidth) + (this.columnWidth / 2);
+        const btnHalf = 14; // 28px / 2
+        const inTopStrip = ry <= stripHeight;
+        // Position button at column center near the top (only show when in top strip)
+        if (inTopStrip) {
+            this.columnAddBtn.style.left = Math.max(0, centerX - btnHalf) + 'px';
+            this.columnAddBtn.style.top = '8px';
+            this.columnAddBtn.setAttribute('data-col-index', String(colIndex));
+            this.columnAddBtn.style.display = 'block';
+        } else {
+            if (this.columnAddBtn) this.columnAddBtn.style.display = 'none';
+        }
+
+        // Show a visible drag strip at the top aligned to the hovered column
+        this.ensureColumnDragBar();
+        if (this.columnDragBar) {
+            this.columnDragBar.style.left = (colIndex * this.columnWidth) + 'px';
+            this.columnDragBar.style.width = this.columnWidth + 'px';
+            this.columnDragBar.setAttribute('data-col-index', String(colIndex));
+            this.columnDragBar.style.display = inTopStrip ? 'block' : 'none';
+        }
+        // Show a subtle highlight for the hovered column to imply move area
+        this.ensureColumnIndicators();
+        if (this.columnHighlight && (!this.columnDrag || !this.columnDrag.active)) {
+            this.columnHighlight.style.left = (colIndex * this.columnWidth) + 'px';
+            this.columnHighlight.style.width = this.columnWidth + 'px';
+            // Only display highlight when in top strip
+            this.columnHighlight.style.display = inTopStrip ? 'block' : 'none';
+        }
+    }
+
+    onGridMouseLeave() {
+        if (this.columnAddBtn) {
+            this.columnAddBtn.style.display = 'none';
+        }
+        if (this.columnDragBar) {
+            this.columnDragBar.style.display = 'none';
+        }
+    }
+
+    // Re-activate hover indicators (used after re-render or column move)
+    refreshColumnHoverUI() {
+        if (!this.grid || !this._lastGridMouse) return;
+        // Synthesize a move update using last position
+        const rect = this.grid.getBoundingClientRect();
+        const zoom = this.zoom || 1;
+        const rx = (this._lastGridMouse.clientX - rect.left) / zoom;
+        const ry = (this._lastGridMouse.clientY - rect.top) / zoom;
+        const stripHeight = (this.columnDragConfig && this.columnDragConfig.stripHeight) || 48;
+        const inTopStrip = ry >= 0 && ry <= stripHeight;
+        if (rx < 0 || ry < 0 || !inTopStrip) { this.onGridMouseLeave(); return; }
+        let colIndex = Math.floor(rx / this.columnWidth);
+        if (colIndex < 0) colIndex = 0;
+        const centerX = (colIndex * this.columnWidth) + (this.columnWidth / 2);
+        const btnHalf = 14;
+        if (this.columnAddBtn) {
+            this.columnAddBtn.style.left = Math.max(0, centerX - btnHalf) + 'px';
+            this.columnAddBtn.style.top = '8px';
+            this.columnAddBtn.setAttribute('data-col-index', String(colIndex));
+            this.columnAddBtn.style.display = 'block';
+        }
+        this.ensureColumnDragBar();
+        if (this.columnDragBar) {
+            this.columnDragBar.style.left = (colIndex * this.columnWidth) + 'px';
+            this.columnDragBar.style.width = this.columnWidth + 'px';
+            this.columnDragBar.style.display = 'block';
+        }
+        // Show highlight as well during refresh
+        this.ensureColumnIndicators();
+        if (this.columnHighlight) {
+            this.columnHighlight.style.left = (colIndex * this.columnWidth) + 'px';
+            this.columnHighlight.style.width = this.columnWidth + 'px';
+            this.columnHighlight.style.display = 'block';
+        }
     }
 
     // Update SVG viewBox to match current grid dimensions
