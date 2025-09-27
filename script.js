@@ -12692,9 +12692,9 @@ function setupTocNavigation() {
             if (personasMount) personasMount.style.display = 'none';
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
             if (contentNav) contentNav.style.display = 'block';
-            // Journey uses default navbar
+            // Journey uses default navbar with explicit title
             if (window.Components && typeof window.Components.renderContentNavbar === 'function') {
-                window.Components.renderContentNavbar('contentNavMount');
+                window.Components.renderContentNavbar('contentNavMount', 'Journey Map');
                 setupContentNavScrollEffect();
                 // Bind journey tool navbar actions after rendering
                 if (window.journey) {
@@ -12873,9 +12873,9 @@ function setupTocNavigation() {
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
             if (contentNav) contentNav.style.display = 'block';
             
-            // Use default navbar for fallback
+            // Use default navbar for fallback (explicit Journey Map title)
             if (window.Components && typeof window.Components.renderContentNavbar === 'function') {
-                window.Components.renderContentNavbar('contentNavMount');
+                window.Components.renderContentNavbar('contentNavMount', 'Journey Map');
                 setupContentNavScrollEffect();
                 // Bind journey tool navbar actions after rendering
                 if (window.journey) {
