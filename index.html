@@ -340,6 +340,23 @@
     </style>
 </head>
 <body>
+    <script>
+        // Redirect browsers to landing page by default; keep dashboard for PWA/queries
+        (function() {
+            try {
+                var isStandalone = (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.navigator.standalone === true
+                );
+                var hasQuery = !!(window.location.search && window.location.search.length > 1);
+                if (!isStandalone && !hasQuery) {
+                    window.location.replace('landing.html');
+                }
+            } catch (e) { /* no-op */ }
+        })();
+    </script>
     <!-- Minimal splash screen (injected only if not recently shown) -->
     <div id="splashScreen" aria-hidden="true" style="display:none">
         <img src="logo.svg" alt="Flowbox" class="splash-logo" />
@@ -948,12 +965,18 @@
     <script src="script.js?v=1.8"></script>
     
     <script>
-        // Splash screen: show once per 24 hours
+        // Splash screen: show once per 24 hours (or always when ?splash=1)
         (function() {
             var SPLASH_KEY = 'flowbox:splash:lastShownAt';
             var ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            var forceSplash = false;
+            try {
+                var params = new URLSearchParams(window.location.search || '');
+                forceSplash = (params.get('splash') === '1');
+            } catch (e) { /* no-op */ }
             function shouldShowSplash() {
                 try {
+                    if (forceSplash) return true;
                     var last = parseInt(localStorage.getItem(SPLASH_KEY) || '0', 10);
                     return !last || (Date.now() - last) > ONE_DAY_MS;
                 } catch (e) { return true; }
