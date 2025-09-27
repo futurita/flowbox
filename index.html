@@ -7,25 +7,6 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Flowbox</title>
-    <script>
-        (function() {
-            try {
-                var isStandalone = (
-                    window.matchMedia('(display-mode: standalone)').matches ||
-                    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
-                    window.matchMedia('(display-mode: fullscreen)').matches ||
-                    window.navigator.standalone === true
-                );
-                var hasQuery = !!(window.location.search && window.location.search.length > 1);
-                // Build a robust path to landing.html under GitHub Pages subpath
-                var basePath = window.location.pathname.replace(/[^\/]*$/, '');
-                var target = basePath + 'landing.html';
-                if (!isStandalone && !hasQuery) {
-                    window.location.replace(target);
-                }
-            } catch (e) { /* no-op */ }
-        })();
-    </script>
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="A comprehensive design process management tool for UX/UI designers">
@@ -359,6 +340,23 @@
     </style>
 </head>
 <body>
+    <script>
+        // Redirect browsers to landing page by default; keep dashboard for PWA/queries
+        (function() {
+            try {
+                var isStandalone = (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.navigator.standalone === true
+                );
+                var hasQuery = !!(window.location.search && window.location.search.length > 1);
+                if (!isStandalone && !hasQuery) {
+                    window.location.replace('landing.html');
+                }
+            } catch (e) { /* no-op */ }
+        })();
+    </script>
     <!-- Minimal splash screen (injected only if not recently shown) -->
     <div id="splashScreen" aria-hidden="true" style="display:none">
         <img src="logo.svg" alt="Flowbox" class="splash-logo" />
