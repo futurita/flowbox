@@ -7428,9 +7428,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSidebarBottom();
     setupSettingsModal();
     setupGlobalExportHandlers(); // Setup global export dropdown handlers
-    // Render content navbar component before initializing journey
+    // Render content navbar with title based on last active tab (defaults to Cover)
     if (window.Components && typeof window.Components.renderContentNavbar === 'function') {
-        window.Components.renderContentNavbar('contentNavMount');
+        let initialTitle = 'Cover';
+        try {
+            const last = localStorage.getItem(getScopedKey(BASE_ACTIVE_TAB_KEY));
+            if (last === 'journey') initialTitle = 'Journey Map';
+            else if (last === 'personas') initialTitle = 'Persona';
+            else if (last === 'information-hierarchy') initialTitle = 'Information Hierarchy';
+            else if (last === 'as-is-flow') initialTitle = 'As-is Flow';
+            else if (last === 'to-be-flow') initialTitle = 'To-be Flow';
+        } catch {}
+        window.Components.renderContentNavbar('contentNavMount', initialTitle);
         // Ensure navbar scroll blur attaches after render
         setupContentNavScrollEffect();
         setTimeout(setupContentNavScrollEffect, 0);
