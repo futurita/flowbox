@@ -7,6 +7,23 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Flowbox</title>
+    <script>
+        (function() {
+            try {
+                var isStandalone = (
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.navigator.standalone === true
+                );
+                var hasQuery = !!(window.location.search && window.location.search.length > 1);
+                if (!isStandalone && !hasQuery) {
+                    var basePath = window.location.pathname.replace(/[^\/]*$/, '');
+                    window.location.replace(basePath + 'landing.html');
+                }
+            } catch (e) { /* no-op */ }
+        })();
+    </script>
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="A comprehensive design process management tool for UX/UI designers">
