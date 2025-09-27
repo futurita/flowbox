@@ -912,6 +912,29 @@ function renderPersonasInterface() {
     
     renderPersonasList();
 }
+// Information Hierarchy: Empty state renderer and create handler
+function renderInformationHierarchyEmptyState() {
+    const mount = document.getElementById('informationHierarchyMount');
+    if (!mount) return;
+    mount.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-state-content">
+                <div class="empty-state-icon"><span class="material-icons-outlined" aria-hidden="true">insert_chart_outlined</span></div>
+                <h3>No Information Hierarchy Yet</h3>
+                <p>Create your first hierarchy to start organizing content structure.</p>
+                <button class="btn" id="ihCreateActionBtn"><span>+</span> Create Information Hierarchy</button>
+            </div>
+        </div>
+    `;
+    const btn = document.getElementById('ihCreateActionBtn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            try { localStorage.removeItem(getScopedKey('ihData')); } catch {}
+            renderInformationHierarchyInterface();
+            showSuccessToast('Information Hierarchy created');
+        });
+    }
+}
 function renderInformationHierarchyInterface() {
     const mount = document.getElementById('informationHierarchyMount');
     if (!mount) return;
@@ -919,7 +942,7 @@ function renderInformationHierarchyInterface() {
     // Root container
     mount.innerHTML = `
         <div class="information-hierarchy-container" id="ihContainer">
-            <div class="flow-board-title-container" style="display:flex; align-items:center; gap:8px;">
+            <div class="flow-board-title-container" id="ihTitleBar">
                 <h4 class="flow-board-title" id="ihBoardName" contenteditable="true">Board 1</h4>
                 <button class="btn btn-secondary icon-only" id="ihDeleteBoardBtn" title="Delete board" aria-label="Delete board">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -929,50 +952,228 @@ function renderInformationHierarchyInterface() {
                     </svg>
                 </button>
             </div>
-            <div class="flow-container" id="ihEditorRoot">
                 <div class="flow-board flow-board-even">
                     <div class="flow-canvas-wrap" id="ihCanvasWrap">
-                        <div class="flow-grid" id="ihGrid" style="width:20000px;height:10000px;"></div>
-                        <svg class="flow-edges-svg" id="ihEdges" width="20000" height="10000"></svg>
-                        <div class="flow-area" id="ihCanvas" style="width:20000px;height:10000px;"></div>
+                        <div class="flow-grid" id="ihGrid" style="width:100%;height:100%;"></div>
+                        <svg class="flow-edges-svg" id="ihEdges"></svg>
+                        <div class="flow-area" id="ihCanvas" style="width:100%;height:100%;"></div>
                     </div>
                 </div>
-            </div>
         </div>
     `;
 
     // Lightweight editor state
     const gridSize = 20;
     let snapEnabled = true;
-    let connectMode = false;
+    let columnSnapEnabled = true;
     const projectId = getCurrentProjectId();
     const STORAGE_KEY = getScopedKey('ihData');
     const canvas = mount.querySelector('#ihCanvas');
     const edgesSvg = mount.querySelector('#ihEdges');
+    const canvasWrap = mount.querySelector('#ihCanvasWrap');
+    if (canvasWrap) { try { canvasWrap.setAttribute('tabindex', '0'); } catch {} }
+    let zoom = 1;
     const boardNameEl = mount.querySelector('#ihBoardName');
 
+    // Prefer durable storage on devices (especially in PWA)
+    try {
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().catch(() => {});
+        }
+    } catch {}
+
+    // Minimal IndexedDB key-value helpers for robust persistence
+    async function ihOpenDb() {
+        return await new Promise((resolve, reject) => {
+            try {
+                const req = indexedDB.open('flowbox-db', 1);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv', { keyPath: 'k' });
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            } catch (e) { reject(e); }
+        });
+    }
+
+    async function ihIdbSet(key, value) {
+        try {
+            const db = await ihOpenDb();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction('kv', 'readwrite');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+                tx.objectStore('kv').put({ k: key, v: value, t: Date.now() });
+            });
+            try { db.close(); } catch {}
+        } catch {}
+    }
+
+    async function ihIdbGet(key) {
+        try {
+            const db = await ihOpenDb();
+            const result = await new Promise((resolve, reject) => {
+                const tx = db.transaction('kv', 'readonly');
+                tx.oncomplete = () => {};
+                tx.onerror = () => reject(tx.error);
+                const req = tx.objectStore('kv').get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+            try { db.close(); } catch {}
+            return result;
+        } catch { return null; }
+    }
+
+    async function ihIdbDelete(key) {
+        try {
+            const db = await ihOpenDb();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction('kv', 'readwrite');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+                tx.objectStore('kv').delete(key);
+            });
+            try { db.close(); } catch {}
+        } catch {}
+    }
+
     const state = { nodes: [], edges: [], boardName: 'Board 1' };
+    let selectedNodeId = null;
+    let selectedNodeIds = new Set();
+    let selectedEdgeKey = null;
+    let isEditingLabel = false;
+    // Suppress single click immediately following a marquee selection
+    let suppressClickAfterMarquee = false;
+    // Internal clipboard for IH (nodes/groups)
+    let ihClipboard = null;
 
     // Utilities
     const snap = (v) => snapEnabled ? Math.round(v / gridSize) * gridSize : v;
     const updateStatus = () => {};
+    const NODE_W = 120; // smaller default
+    const NODE_H = 40;  // smaller default
+    const ROW_SPACING = Math.max(12, Math.round(NODE_H / 2)); // smaller rows; half node height
+    const SAFE_MARGIN = { top: 0, left: 0, right: 0, bottom: 0 }; // no inner padding/margins around canvas
+    const COLUMN_SPACING_MIN = 140; // 50% smaller
+    const COLUMN_EXTRA_GUTTER = 80;
+
+    function getBounds() {
+        const w = Math.max(1, canvasWrap.clientWidth || 1);
+        const h = Math.max(1, canvasWrap.clientHeight || 1);
+        return { w, h };
+    }
+
+    function getColumnSpacing() {
+        return Math.max(NODE_W + 70, COLUMN_SPACING_MIN);
+    }
+
+    function getFirstColumnCenter() {
+        const spacing = getColumnSpacing();
+        return SAFE_MARGIN.left + Math.round(spacing / 2);
+    }
+
+    function snapToColumnLeft(x, nodeW = NODE_W) {
+        if (!columnSnapEnabled) return x;
+        const spacing = getColumnSpacing();
+        const firstCenter = getFirstColumnCenter();
+        // Snap to center line
+        const desiredCenter = Math.round((x + nodeW / 2 - firstCenter) / spacing) * spacing + firstCenter;
+        let left = desiredCenter - Math.round(nodeW / 2);
+        const clamped = clampToCanvas(left, 0, nodeW, 0);
+        return clamped.x;
+    }
+
+    function applyColumnGrid() {
+        const grid = mount.querySelector('#ihGrid');
+        if (!grid) return;
+        const spacing = getColumnSpacing();
+        const line = 1; // 1px stroke at each column center
+        const before = Math.max(0, spacing - line);
+        // Make grid invisible but keep element for snapping/interaction
+        grid.style.backgroundImage = 'none';
+        grid.style.backgroundSize = '';
+        grid.style.backgroundPosition = '';
+        grid.style.backgroundColor = 'transparent';
+    }
+
+    function clampToCanvas(x, y, nodeW = NODE_W, nodeH = NODE_H) {
+        const { w, h } = getBounds();
+        const minX = SAFE_MARGIN.left;
+        const minY = SAFE_MARGIN.top;
+        const maxX = Math.max(minX, w - nodeW - SAFE_MARGIN.right);
+        const maxY = Math.max(minY, h - nodeH - SAFE_MARGIN.bottom);
+        return { x: Math.max(minX, Math.min(maxX, x)), y: Math.max(minY, Math.min(maxY, y)) };
+    }
+    function resizeCanvas() {
+        try {
+            const w = Math.max(1, canvasWrap.clientWidth || 1);
+            const h = Math.max(1, canvasWrap.clientHeight || 1);
+            if (canvas) { canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
+            const grid = mount.querySelector('#ihGrid');
+            if (grid) { grid.style.width = w + 'px'; grid.style.height = h + 'px'; }
+            if (edgesSvg) { edgesSvg.setAttribute('width', String(w)); edgesSvg.setAttribute('height', String(h)); }
+            // apply zoom via CSS transform
+            const s = `scale(${zoom})`;
+            const origin = '0 0';
+            if (canvas) { canvas.style.transformOrigin = origin; canvas.style.transform = s; }
+            if (edgesSvg) { edgesSvg.style.transformOrigin = origin; edgesSvg.style.transform = s; }
+            if (grid) { grid.style.transformOrigin = origin; grid.style.transform = s; }
+            applyColumnGrid();
+        } catch {}
+    }
     function save() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+        try {
+            state.updatedAt = Date.now();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            updateStorageUsage();
+        } catch {}
+        // Fire-and-forget durable save
+        ihIdbSet(STORAGE_KEY, state);
         showSuccessToast('Information Hierarchy saved');
     }
     function load() {
+        let loaded = false;
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
-            const data = JSON.parse(raw);
-            if (data && Array.isArray(data.nodes)) {
-                state.nodes = data.nodes;
-                state.edges = Array.isArray(data.edges) ? data.edges : [];
-                if (typeof data.boardName === 'string' && data.boardName.trim()) {
-                    state.boardName = data.boardName;
+            if (raw) {
+                const data = JSON.parse(raw);
+                if (data && Array.isArray(data.nodes)) {
+                    state.nodes = data.nodes;
+                    state.edges = Array.isArray(data.edges) ? data.edges : [];
+                    if (typeof data.boardName === 'string' && data.boardName.trim()) {
+                        state.boardName = data.boardName;
+                    }
+                    state.updatedAt = data.updatedAt || Date.now();
+                    loaded = true;
                 }
             }
         } catch {}
+        // Async check IndexedDB for fresher data or migration
+        ihIdbGet(STORAGE_KEY).then((rec) => {
+            const data = rec && (rec.v || rec); // handle potential structure
+            if (data && Array.isArray(data.nodes)) {
+                const idbTime = data.updatedAt || rec.t || 0;
+                const localTime = (loaded && state && state.updatedAt) ? state.updatedAt : 0;
+                if (!loaded || idbTime > localTime) {
+                    state.nodes = data.nodes;
+                    state.edges = Array.isArray(data.edges) ? data.edges : [];
+                    if (typeof data.boardName === 'string' && data.boardName.trim()) {
+                        state.boardName = data.boardName;
+                    }
+                    state.updatedAt = idbTime || Date.now();
+                    renderAll();
+                    applyBoardName();
+                } else {
+                    // keep IndexedDB in sync if localStorage was newer
+                    ihIdbSet(STORAGE_KEY, state);
+                }
+            } else if (loaded) {
+                // migrate localStorage -> IndexedDB if IDB empty
+                ihIdbSet(STORAGE_KEY, state);
+            }
+        }).catch(() => {});
     }
 
     // Render helpers
@@ -982,41 +1183,210 @@ function renderInformationHierarchyInterface() {
             el = document.createElement('div');
             el.className = 'flow-node';
             el.dataset.id = node.id;
-            el.style.minWidth = '160px';
-            el.style.minHeight = '48px';
+            el.style.minWidth = '120px';
+            el.style.minHeight = '40px';
+            el.setAttribute('tabindex', '0');
             el.innerHTML = `
                 <div class="drag-handle" title="Drag"></div>
-                <div class="label" contenteditable="true" data-placeholder="Text"></div>
+                <div class="label" contenteditable="false" data-placeholder="Text"></div>
+                <div class="connection-dots" aria-hidden="true">
+                    <div class="connection-dot top" data-side="top"></div>
+                    <div class="connection-dot right" data-side="right"></div>
+                    <div class="connection-dot bottom" data-side="bottom"></div>
+                    <div class="connection-dot left" data-side="left"></div>
+                </div>
             `;
             canvas.appendChild(el);
             // Edit text updates
             const label = el.querySelector('.label');
             label.textContent = node.text || '';
             label.addEventListener('input', () => { node.text = label.textContent; scheduleSave(); });
+            // Enable editing on double-click
+            label.addEventListener('dblclick', (ev) => {
+                ev.stopPropagation();
+                try { label.setAttribute('contenteditable', 'plaintext-only'); } catch { label.setAttribute('contenteditable', 'true'); }
+                isEditingLabel = true;
+                setSelected(node.id, false);
+                try { label.focus(); } catch {}
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(label);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch {}
+                canvas.classList.add('text-editing-mode');
+            });
+            // Prevent global shortcuts while typing in label
+            label.addEventListener('keydown', (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                    e.preventDefault();
+                    try { label.blur(); } catch {}
+                }
+            });
+            // Single click: select only. Clicking directly on label: enter edit mode
+            el.addEventListener('click', (evt) => {
+                evt.stopPropagation();
+                if (evt.target === label) {
+                    setSelected(node.id, false);
+                    // Single click selects only; double-click enters edit (handled above)
+                } else if (evt.target === el) {
+                    setSelected(node.id, false);
+                }
+            });
+            // prevent bubbling from label specifically
+            label.addEventListener('mousedown', (ev) => { ev.stopPropagation(); });
+            label.addEventListener('click', (ev) => { ev.stopPropagation(); });
+            label.addEventListener('focus', (ev) => { ev.stopPropagation(); isEditingLabel = true; setSelected(node.id, false); canvas.classList.add('text-editing-mode'); });
+            label.addEventListener('blur', (ev) => { ev.stopPropagation(); isEditingLabel = false; try { label.setAttribute('contenteditable', 'false'); } catch {} canvas.classList.remove('text-editing-mode'); scheduleSave(); });
+            // No inline delete button; deletion via keyboard only
             // Dragging
             attachDrag(el, node);
-            // Click for connect mode
-            el.addEventListener('click', onNodeClick);
+            // Connection dots for creating connectors like Flow
+            bindIhConnectionDots(el, node);
+            // Select on click
+            el.addEventListener('mousedown', (ev) => {
+                ev.stopPropagation();
+                if (ev.target !== label) {
+                    // If label is currently focused for editing, blur it so Delete works
+                    try { if (document.activeElement === label) label.blur(); } catch {}
+                    ev.preventDefault();
+                }
+                // If already part of a group selection, keep as is; else select single
+                if (!((selectedNodeId && selectedNodeId === node.id) || (selectedNodeIds && selectedNodeIds.has(node.id)))) {
+                    setSelected(node.id, false);
+                }
+            });
+            el.addEventListener('click', (ev) => { ev.stopPropagation(); onNodeClick(ev); });
+            // Add button to create auto-arranged sub node on hover
+            const addBtn = document.createElement('button');
+            addBtn.className = 'node-add';
+            addBtn.title = 'Add sub node';
+            addBtn.setAttribute('aria-label', 'Add sub node');
+            addBtn.style.cssText = 'position:absolute; top:4px; right:4px; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border:none; background:#f5f5f5; color:#555; border-radius:4px; cursor:pointer; padding:0; line-height:0; opacity:0.0; transition:opacity .12s ease; z-index:1001; box-shadow:0 1px 3px rgba(0,0,0,0.2);';
+            addBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+            el.appendChild(addBtn);
+            el.addEventListener('mouseenter', () => { const a = el.querySelector('.node-add'); if (a) a.style.opacity = '1'; });
+            el.addEventListener('mouseleave', () => {
+                const a = el.querySelector('.node-add');
+                if (!a) return;
+                // Delay hide slightly to allow moving onto the button outside node bounds
+                setTimeout(() => { if (!a.matches(':hover')) a.style.opacity = '0'; }, 80);
+            });
+            addBtn.addEventListener('mouseenter', () => { addBtn.style.opacity = '1'; });
+            addBtn.addEventListener('mouseleave', () => { addBtn.style.opacity = '0'; });
+            addBtn.addEventListener('click', (ev) => {
+                try {
+                    ev.stopPropagation();
+                    // Compute next column center X
+                    const spacing = getColumnSpacing();
+                    const firstCenter = getFirstColumnCenter();
+                    const parentWidth = el.offsetWidth || NODE_W;
+                    const parentHeight = el.offsetHeight || NODE_H;
+                    const parentCenterX = node.x + Math.round(parentWidth / 2);
+                    const currentColIndex = Math.round((parentCenterX - firstCenter) / spacing);
+                    const nextColCenterX = firstCenter + (currentColIndex + 1) * spacing;
+                    const childWidth = NODE_W;
+                    const childHeight = NODE_H;
+                    let preferredLeft = nextColCenterX - Math.round(childWidth / 2);
+                    // Vertical: snap child's CENTER to nearest horizontal grid line to match parent
+                    const parentCenterY = node.y + Math.round(parentHeight / 2);
+                    const snappedCenterY = Math.round(parentCenterY / ROW_SPACING) * ROW_SPACING;
+                    let preferredTop = snappedCenterY - Math.round(childHeight / 2);
+
+                    // Collision-aware placement: if spot occupied, move down by row spacing until free
+                    const isOverlapping = (x, y, w, h) => {
+                        for (const n of state.nodes) {
+                            const elN = canvas.querySelector(`[data-id="${n.id}"]`);
+                            const nw = (elN && elN.offsetWidth) ? elN.offsetWidth : NODE_W;
+                            const nh = (elN && elN.offsetHeight) ? elN.offsetHeight : NODE_H;
+                            const nx = n.x;
+                            const ny = n.y;
+                            const overlap = !(x + w <= nx || nx + nw <= x || y + h <= ny || ny + nh <= y);
+                            if (overlap) return true;
+                        }
+                        return false;
+                    };
+
+                    let placeLeft = preferredLeft;
+                    let placeTop = preferredTop;
+                    const { h: canvasH } = getBounds();
+                    let attempts = 0;
+                    const maxAttempts = 100;
+                    while (attempts < maxAttempts && isOverlapping(placeLeft, placeTop, childWidth, childHeight)) {
+                        attempts += 1;
+                        placeTop += ROW_SPACING;
+                        if (placeTop + childHeight > canvasH) break;
+                    }
+
+                    // Create node and link
+                    const child = createNodeAt(placeLeft, placeTop, '');
+                    if (child && !state.edges.some(ed => ed.from === node.id && ed.to === child.id)) {
+                        state.edges.push({ from: node.id, to: child.id });
+                    }
+                    renderAll();
+                    setSelected(child.id, false);
+                    scheduleSave();
+                } catch {}
+            });
+            // Color picker on context menu (right click)
+            el.addEventListener('contextmenu', (ev) => {
+                ev.preventDefault();
+                showColorPicker(node);
+            });
         }
         el.style.left = `${node.x}px`;
         el.style.top = `${node.y}px`;
+        if ((selectedNodeId && selectedNodeId === node.id) || (selectedNodeIds && selectedNodeIds.has(node.id))) {
+            el.classList.add('selected');
+        } else {
+            el.classList.remove('selected');
+        }
+        // apply color class
+        const colors = ['color-red','color-green','color-blue','color-white'];
+        colors.forEach(c=>el.classList.remove(c));
+        if (node.color && colors.includes('color-' + node.color)) {
+            el.classList.add('color-' + node.color);
+        }
         return el;
     }
 
     function renderAll() {
+        // remove DOM nodes that no longer exist in state
+        const existing = canvas.querySelectorAll('.flow-node');
+        const ids = new Set(state.nodes.map(n => n.id));
+        existing.forEach(el => { if (!ids.has(el.dataset.id)) el.remove(); });
         // nodes
         state.nodes.forEach(renderNode);
         // edges
         edgesSvg.innerHTML = '';
+        // Draw edges first, then re-apply selected state in case of re-render
         state.edges.forEach((e) => drawEdge(e));
+        if (selectedEdgeKey) {
+            try {
+                const sel = edgesSvg.querySelector(`[data-edge-key="${selectedEdgeKey}"]`);
+                if (sel) sel.classList.add('selected');
+            } catch {}
+        }
+    }
+
+    function getEdgeKey(edge) {
+        return (edge && edge.from && edge.to) ? (edge.from + '->' + edge.to) : '';
     }
 
     function drawEdge(edge) {
         const from = state.nodes.find(n => n.id === edge.from);
         const to = state.nodes.find(n => n.id === edge.to);
         if (!from || !to) return;
-        const fromCenter = { x: from.x + 80, y: from.y + 24 };
-        const toCenter = { x: to.x + 80, y: to.y + 24 };
+        const fromEl = canvas.querySelector(`[data-id="${from.id}"]`);
+        const toEl = canvas.querySelector(`[data-id="${to.id}"]`);
+        const fw = (fromEl && fromEl.offsetWidth) ? fromEl.offsetWidth : NODE_W;
+        const fh = (fromEl && fromEl.offsetHeight) ? fromEl.offsetHeight : NODE_H;
+        const tw = (toEl && toEl.offsetWidth) ? toEl.offsetWidth : NODE_W;
+        const th = (toEl && toEl.offsetHeight) ? toEl.offsetHeight : NODE_H;
+        const fromCenter = { x: from.x + fw / 2, y: from.y + fh / 2 };
+        const toCenter = { x: to.x + tw / 2, y: to.y + th / 2 };
         // Orthogonal connector with a mid X for auto line connector look
         const midX = Math.round((fromCenter.x + toCenter.x) / 2);
         const d = `M ${fromCenter.x} ${fromCenter.y} L ${midX} ${fromCenter.y} L ${midX} ${toCenter.y} L ${toCenter.x} ${toCenter.y}`;
@@ -1025,18 +1395,186 @@ function renderInformationHierarchyInterface() {
         path.setAttribute('stroke', '#2196f3');
         path.setAttribute('fill', 'none');
         path.setAttribute('class', 'flow-edge');
+        path.setAttribute('data-edge-key', getEdgeKey(edge));
+        try { path.style.pointerEvents = 'stroke'; } catch {}
+        if (selectedEdgeKey && selectedEdgeKey === getEdgeKey(edge)) {
+            try { path.classList.add('selected'); } catch {}
+        }
+        // Use pointerdown to be robust against click suppression during drags
+        path.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            setSelectedEdge(getEdgeKey(edge));
+        });
         edgesSvg.appendChild(path);
+    }
+
+    // Connection handling (simplified to match Flow interactions)
+    let connecting = null; // { fromId, fromSide }
+    let connectPreviewPath = null; // SVG path element for live preview
+    let onConnectMoveRef = null; // bound move handler reference for cleanup
+    let onConnectKeydownRef = null; // bound keydown handler reference for cleanup
+
+    function getPortPointForNode(node, side) {
+        const el = canvas.querySelector(`[data-id="${node.id}"]`);
+        const w = (el && el.offsetWidth) ? el.offsetWidth : NODE_W;
+        const h = (el && el.offsetHeight) ? el.offsetHeight : NODE_H;
+        const left = node.x;
+        const top = node.y;
+        if (side === 'left') return { x: left, y: top + Math.round(h / 2) };
+        if (side === 'right') return { x: left + w, y: top + Math.round(h / 2) };
+        if (side === 'top') return { x: left + Math.round(w / 2), y: top };
+        if (side === 'bottom') return { x: left + Math.round(w / 2), y: top + h };
+        return { x: left + Math.round(w / 2), y: top + Math.round(h / 2) };
+    }
+
+    function getCanvasPointFromEvent(e) {
+        const p = e.touches ? e.touches[0] : e;
+        const rect = canvas.getBoundingClientRect();
+        const x = (p.clientX - rect.left) / zoom;
+        const y = (p.clientY - rect.top) / zoom;
+        return { x: Math.max(0, x), y: Math.max(0, y) };
+    }
+
+    function updateConnectPreview(toPoint) {
+        if (!connecting || !edgesSvg) return;
+        const fromNode = state.nodes.find(n => n.id === connecting.fromId);
+        if (!fromNode) return;
+        const start = getPortPointForNode(fromNode, connecting.fromSide || 'right');
+        // Orthogonal preview path similar to final connector
+        const midX = Math.round((start.x + toPoint.x) / 2);
+        const d = `M ${start.x} ${start.y} L ${midX} ${start.y} L ${midX} ${toPoint.y} L ${toPoint.x} ${toPoint.y}`;
+        if (!connectPreviewPath) {
+            connectPreviewPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            connectPreviewPath.setAttribute('class', 'flow-edge-preview');
+            connectPreviewPath.setAttribute('stroke', '#90caf9');
+            connectPreviewPath.setAttribute('stroke-width', '1.5');
+            connectPreviewPath.setAttribute('stroke-dasharray', '6 4');
+            connectPreviewPath.setAttribute('fill', 'none');
+            connectPreviewPath.setAttribute('pointer-events', 'none');
+            edgesSvg.appendChild(connectPreviewPath);
+        }
+        connectPreviewPath.setAttribute('d', d);
+    }
+
+    function clearConnectPreview() {
+        if (connectPreviewPath && connectPreviewPath.parentNode) {
+            try { connectPreviewPath.parentNode.removeChild(connectPreviewPath); } catch {}
+        }
+        connectPreviewPath = null;
+    }
+
+    function cleanupConnectingListeners() {
+        if (onConnectMoveRef) {
+            document.removeEventListener('mousemove', onConnectMoveRef);
+            document.removeEventListener('touchmove', onConnectMoveRef);
+            onConnectMoveRef = null;
+        }
+        if (onConnectKeydownRef) {
+            document.removeEventListener('keydown', onConnectKeydownRef);
+            onConnectKeydownRef = null;
+        }
+    }
+    function bindIhConnectionDots(nodeEl, node) {
+        const dots = nodeEl.querySelectorAll('.connection-dot');
+        dots.forEach(dot => {
+            dot.style.pointerEvents = 'auto';
+            dot.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                connecting = { fromId: node.id, fromSide: dot.getAttribute('data-side') || 'right' };
+                // Live preview while dragging
+                onConnectMoveRef = (ev) => {
+                    ev.preventDefault();
+                    updateConnectPreview(getCanvasPointFromEvent(ev));
+                };
+                onConnectKeydownRef = (ev) => {
+                    if (ev.key === 'Escape' || ev.key === 'Esc') {
+                        clearConnectPreview();
+                        cleanupConnectingListeners();
+                        connecting = null;
+                    }
+                };
+                document.addEventListener('mousemove', onConnectMoveRef);
+                document.addEventListener('touchmove', onConnectMoveRef, { passive: false });
+                document.addEventListener('mouseup', onConnectUp, { once: true });
+                document.addEventListener('touchend', onConnectUp, { once: true });
+                document.addEventListener('keydown', onConnectKeydownRef);
+            });
+        });
+    }
+
+    function onConnectUp(e) {
+        const el = e.target && e.target.closest ? e.target.closest('.flow-node') : null;
+        if (!connecting) return;
+        // cleanup preview and listeners regardless of result
+        clearConnectPreview();
+        cleanupConnectingListeners();
+        if (el && el.dataset && el.dataset.id) {
+            const toId = el.dataset.id;
+            if (toId !== connecting.fromId) {
+                if (!state.edges.some(ed => ed.from === connecting.fromId && ed.to === toId)) {
+                    // record state for undo before adding a connector
+                    pushState();
+                    state.edges.push({ from: connecting.fromId, to: toId });
+                    renderAll();
+                    scheduleSave();
+                }
+            }
+        }
+        connecting = null;
+    }
+
+    function setSelectedEdge(key) {
+        selectedEdgeKey = key;
+        if (key) setSelected(null);
+        if (edgesSvg) {
+            try {
+                edgesSvg.querySelectorAll('.flow-edge').forEach(p => {
+                    const k = p.getAttribute('data-edge-key');
+                    if (key && k === key) p.classList.add('selected');
+                    else p.classList.remove('selected');
+                });
+            } catch {}
+        }
+    }
+
+    function deleteSelectedEdge() {
+        if (!selectedEdgeKey) return;
+        const before = state.edges.length;
+        // record state for undo before removing a connector
+        pushState();
+        state.edges = state.edges.filter(e => (e && (e.from + '->' + e.to)) !== selectedEdgeKey);
+        if (state.edges.length !== before) {
+            selectedEdgeKey = null;
+            renderAll();
+            scheduleSave();
+        }
     }
 
     // Dragging with snap
     function attachDrag(el, node) {
         const handle = el.querySelector('.drag-handle') || el;
         let startX = 0, startY = 0, originX = 0, originY = 0, dragging = false;
+        let groupDrag = false;
+        let groupStart = null; // Array of { id, nodeRef, originX, originY }
         const onDown = (e) => {
             const p = e.touches ? e.touches[0] : e;
             dragging = true;
             startX = p.clientX; startY = p.clientY;
             originX = node.x; originY = node.y;
+
+            // Determine if we should drag as a group (when multiple are selected and this node is among them)
+            groupDrag = (selectedNodeIds && selectedNodeIds.size > 1 && selectedNodeIds.has(node.id));
+            if (groupDrag) {
+                groupStart = [];
+                selectedNodeIds.forEach((id) => {
+                    const n = state.nodes.find(nn => nn.id === id);
+                    if (!n) return;
+                    groupStart.push({ id, nodeRef: n, originX: n.x, originY: n.y });
+                });
+            } else {
+                groupStart = null;
+            }
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
             document.addEventListener('touchmove', onMove, { passive:false });
@@ -1047,16 +1585,54 @@ function renderInformationHierarchyInterface() {
             const p = e.touches ? e.touches[0] : e;
             const dx = p.clientX - startX;
             const dy = p.clientY - startY;
-            node.x = snap(originX + dx);
-            node.y = snap(originY + dy);
-            el.style.left = `${node.x}px`;
-            el.style.top = `${node.y}px`;
-            // redraw edges connected to this node
-            renderAll();
+            if (groupDrag && Array.isArray(groupStart)) {
+                // Move all selected nodes by the same delta, with grid snapping per node
+                groupStart.forEach(({ nodeRef, originX: gx, originY: gy }) => {
+                    const elN = canvas.querySelector(`[data-id="${nodeRef.id}"]`);
+                    const cw = (elN && elN.offsetWidth) ? elN.offsetWidth : NODE_W;
+                    const ch = (elN && elN.offsetHeight) ? elN.offsetHeight : NODE_H;
+                    let nx = snap(gx + dx);
+                    let ny = snap(gy + dy);
+                    // Snap vertical center to nearest row spacing
+                    const nodeH = ch;
+                    const centerY = ny + Math.round(nodeH / 2);
+                    const snappedCenterY = Math.round(centerY / ROW_SPACING) * ROW_SPACING;
+                    ny = snappedCenterY - Math.round(nodeH / 2);
+                    // Snap X to column left per node width
+                    nx = snapToColumnLeft(nx, cw);
+                    const clamped = clampToCanvas(nx, ny, cw, ch);
+                    nodeRef.x = clamped.x;
+                    nodeRef.y = clamped.y;
+                    if (elN) {
+                        elN.style.left = `${nodeRef.x}px`;
+                        elN.style.top = `${nodeRef.y}px`;
+                    }
+                });
+                renderAll();
+            } else {
+                // Single-node drag with snapping (existing behavior)
+                let nx = snap(originX + dx);
+                let ny = snap(originY + dy);
+                const nodeH = el.offsetHeight || NODE_H;
+                const centerY = ny + Math.round(nodeH / 2);
+                const snappedCenterY = Math.round(centerY / ROW_SPACING) * ROW_SPACING;
+                ny = snappedCenterY - Math.round(nodeH / 2);
+                const cw = el.offsetWidth || NODE_W;
+                const ch = el.offsetHeight || NODE_H;
+                nx = snapToColumnLeft(nx, cw);
+                const clamped = clampToCanvas(nx, ny, cw, ch);
+                node.x = clamped.x;
+                node.y = clamped.y;
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+                renderAll();
+            }
         };
         const onUp = () => {
             if (!dragging) return;
             dragging = false;
+            groupDrag = false;
+            groupStart = null;
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
             document.removeEventListener('touchmove', onMove);
@@ -1067,22 +1643,51 @@ function renderInformationHierarchyInterface() {
         handle.addEventListener('touchstart', onDown, { passive:true });
     }
 
-    // Connect mode
-    let pendingFromId = null;
+    // Selection + child creation
     function onNodeClick(e) {
-        if (!connectMode) return;
         const id = e.currentTarget.dataset.id;
-        if (!pendingFromId) {
-            pendingFromId = id;
-            e.currentTarget.classList.add('selected');
-        } else if (pendingFromId && pendingFromId !== id) {
-            state.edges.push({ from: pendingFromId, to: id });
-            const prev = canvas.querySelector(`[data-id="${pendingFromId}"]`);
-            if (prev) prev.classList.remove('selected');
-            pendingFromId = null;
+        if (e.shiftKey) {
+            // toggle in multi-select
+            if (selectedNodeIds.has(id)) selectedNodeIds.delete(id); else selectedNodeIds.add(id);
+            selectedNodeId = null;
             renderAll();
-            scheduleSave();
+        } else {
+            setSelected(id, false);
         }
+    }
+
+    // onNodeDblClick removed: double-click should not create a child node
+
+    function setSelected(id, scrollIntoView = false) {
+        selectedNodeIds.clear();
+        selectedNodeId = id;
+        // update classes
+        canvas.querySelectorAll('.flow-node.selected').forEach(n => n.classList.remove('selected'));
+        const el = id ? canvas.querySelector(`[data-id="${id}"]`) : null;
+        if (el) {
+            el.classList.add('selected');
+            if (scrollIntoView) {
+                try { el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch {}
+            }
+        }
+        // clear edge selection when selecting a node or clearing selection
+        setSelectedEdge(null);
+    }
+
+    // Delete the currently selected node (and its edges), with undo/redo support
+    function deleteSelectedNode() {
+        if (!selectedNodeId) return;
+        const id = selectedNodeId;
+        // record state for undo
+        pushState();
+        // remove edges referencing this node
+        state.edges = state.edges.filter(e => e.from !== id && e.to !== id);
+        // remove the node
+        state.nodes = state.nodes.filter(n => n.id !== id);
+        // clear selection and rerender
+        setSelected(null);
+        renderAll();
+        scheduleSave();
     }
 
     // Board name wiring
@@ -1105,15 +1710,193 @@ function renderInformationHierarchyInterface() {
         deleteBtn.addEventListener('click', () => {
             if (!confirm('Delete this board? This cannot be undone.')) return;
             try { localStorage.removeItem(STORAGE_KEY); } catch {}
-            // Clear entire Information Hierarchy page to empty state
-            const root = mount;
-            if (root) {
-                root.innerHTML = '';
-            }
+            ihIdbDelete(STORAGE_KEY);
+            renderInformationHierarchyEmptyState();
+            showSuccessToast('Information Hierarchy deleted');
         });
     }
 
-    // No toolbar; creation and connections can be extended via context menu later
+    function genId() {
+        return 'n' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    function getParentsOf(nodeId) {
+        return state.edges.filter(e => e.to === nodeId).map(e => e.from);
+    }
+
+    function getChildrenOf(nodeId) {
+        return state.edges.filter(e => e.from === nodeId).map(e => e.to);
+    }
+
+    // Deselect on click, create on double-click in empty space (wrap, grid, or bare SVG area)
+    if (canvasWrap) {
+        // Allow clicking edges to select them
+        if (edgesSvg) { try { edgesSvg.style.pointerEvents = 'auto'; edgesSvg.style.touchAction = 'manipulation'; } catch {} }
+        const isEmptyArea = (target) => {
+            if (!target) return false;
+            if (target.closest && target.closest('.flow-node')) return false;
+            // Do not treat edges layer as empty area so edges can be clicked
+            return target === canvasWrap || target === canvas || target.id === 'ihCanvas' || target.id === 'ihGrid';
+        };
+        let suppressClickAfterMarquee = false;
+        canvasWrap.addEventListener('click', (e) => {
+            if (suppressClickAfterMarquee) { suppressClickAfterMarquee = false; return; }
+            if (!isEmptyArea(e.target)) return;
+            setSelected(null);
+            setSelectedEdge(null);
+            try { canvasWrap && canvasWrap.focus(); } catch {}
+        });
+        // Marquee selection on empty area drag
+        let marquee = null;
+        let marqStart = null;
+        let isMarqueeing = false;
+        let marqMoved = false;
+        const beginMarquee = (x, y) => {
+            marquee = document.createElement('div');
+            marquee.className = 'ih-marquee';
+            marquee.style.cssText = 'position:absolute;border:1px dashed rgba(33,150,243,0.6);background:rgba(33,150,243,0.12);pointer-events:none;z-index:2000;';
+            canvasWrap.appendChild(marquee);
+            marqStart = { x, y };
+            marqMoved = false;
+            try { canvasWrap && canvasWrap.focus(); } catch {}
+        };
+        const updateMarquee = (x, y) => {
+            if (!marquee || !marqStart) return;
+            const left = Math.min(marqStart.x, x);
+            const top = Math.min(marqStart.y, y);
+            const width = Math.abs(x - marqStart.x);
+            const height = Math.abs(y - marqStart.y);
+            marquee.style.left = left + 'px';
+            marquee.style.top = top + 'px';
+            marquee.style.width = width + 'px';
+            marquee.style.height = height + 'px';
+            // Consider it a real marquee only if moved a few pixels
+            if (width > 3 || height > 3) marqMoved = true;
+        };
+        const finishMarquee = () => {
+            if (!marquee) return;
+            const rect = marquee.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const sel = {
+                left: ((rect.left - canvasRect.left) + canvasWrap.scrollLeft) / zoom,
+                top: ((rect.top - canvasRect.top) + canvasWrap.scrollTop) / zoom,
+                right: ((rect.right - canvasRect.left) + canvasWrap.scrollLeft) / zoom,
+                bottom: ((rect.bottom - canvasRect.top) + canvasWrap.scrollTop) / zoom,
+            };
+            selectedNodeIds.clear();
+            state.nodes.forEach(n => {
+                const elN = canvas.querySelector(`[data-id="${n.id}"]`);
+                const nw = (elN && elN.offsetWidth) ? elN.offsetWidth : NODE_W;
+                const nh = (elN && elN.offsetHeight) ? elN.offsetHeight : NODE_H;
+                const nx = n.x;
+                const ny = n.y;
+                // Select nodes that intersect the marquee, not only fully enclosed
+                const intersects = (nx < sel.right) && ((nx + nw) > sel.left) && (ny < sel.bottom) && ((ny + nh) > sel.top);
+                if (intersects) selectedNodeIds.add(n.id);
+            });
+            selectedNodeId = null;
+            if (marquee.parentNode) marquee.parentNode.removeChild(marquee);
+            marquee = null; marqStart = null;
+            // Suppress the next click if this was a real marquee, to avoid clearing selection
+            suppressClickAfterMarquee = marqMoved;
+            marqMoved = false;
+            renderAll();
+            try { canvasWrap && canvasWrap.focus(); } catch {}
+        };
+        canvasWrap.addEventListener('mousedown', (e) => {
+            if (!isEmptyArea(e.target)) return;
+            const r = canvasWrap.getBoundingClientRect();
+            beginMarquee((e.clientX - r.left) + canvasWrap.scrollLeft, (e.clientY - r.top) + canvasWrap.scrollTop);
+            isMarqueeing = true;
+            const onMove = (ev) => {
+                updateMarquee((ev.clientX - r.left) + canvasWrap.scrollLeft, (ev.clientY - r.top) + canvasWrap.scrollTop);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                isMarqueeing = false;
+                finishMarquee();
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        canvasWrap.addEventListener('dblclick', (e) => {
+            if (!isEmptyArea(e.target)) return;
+            const rect = canvasWrap.getBoundingClientRect();
+            let x = snap((e.clientX - rect.left) / zoom);
+            let y = snap((e.clientY - rect.top) / zoom);
+            const clamped = clampToCanvas(x, y);
+            createNodeAt(clamped.x, clamped.y, '');
+            setSelectedEdge(null);
+        });
+    }
+
+    function createNodeAt(x, y, text = '') {
+        const id = genId();
+        let nx = snap(x);
+        nx = snapToColumnLeft(nx, NODE_W);
+        // Create by snapping node center to row grid
+        const nodeH = NODE_H;
+        const centerY = y + Math.round(nodeH / 2);
+        const snappedCenterY = Math.round(centerY / ROW_SPACING) * ROW_SPACING;
+        const clamped = clampToCanvas(nx, snappedCenterY - Math.round(nodeH / 2));
+        const node = { id, x: clamped.x, y: clamped.y, text, color: 'white' };
+        state.nodes.push(node);
+        renderNode(node);
+        renderAll();
+        setSelected(id, false);
+        setSelectedEdge(null);
+        scheduleSave();
+        return node;
+    }
+
+    // Capture-phase selection fallback to guarantee node selection even if bubbling gets interrupted
+    function captureSelect(e) {
+        const t = e.target;
+        if (t && t.closest) {
+            const nodeEl = t.closest('.flow-node');
+            if (nodeEl && nodeEl.dataset && nodeEl.dataset.id) {
+                setSelected(nodeEl.dataset.id, false);
+                setSelectedEdge(null);
+            }
+        }
+    }
+    document.addEventListener('click', captureSelect, true);
+
+    // Simple color picker overlay
+    function showColorPicker(node) {
+        let menu = document.getElementById('ihColorMenu');
+        if (!menu) {
+            menu = document.createElement('div');
+            menu.id = 'ihColorMenu';
+            menu.style.cssText = 'position:fixed;z-index:2000;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:6px;display:flex;gap:6px;';
+            const makeBtn = (name, color) => {
+                const b = document.createElement('button');
+                b.textContent = name;
+                b.className = 'btn btn-secondary';
+                b.style.minWidth = '56px';
+                b.style.borderColor = '#ccc';
+                b.style.background = color;
+                b.style.color = name === 'white' ? '#333' : '#fff';
+                b.addEventListener('click', () => {
+                    node.color = name;
+                    renderAll();
+                    scheduleSave();
+                    menu.remove();
+                });
+                return b;
+            };
+            ['white','red','green','blue'].forEach(c => menu.appendChild(makeBtn(c, c === 'white' ? '#fff' : (c==='red'?'#FFCDD2':c==='green'?'#C8E6C9':'#B3E5FC'))));
+            document.body.appendChild(menu);
+        }
+        // position near selected node
+        const el = canvas.querySelector(`[data-id="${node.id}"]`);
+        if (el) {
+            const r = el.getBoundingClientRect();
+            menu.style.left = Math.round(r.right + 6) + 'px';
+            menu.style.top = Math.round(r.top) + 'px';
+        }
+    }
 
     let saveTimer = null;
     function scheduleSave() {
@@ -1121,18 +1904,193 @@ function renderInformationHierarchyInterface() {
         saveTimer = setTimeout(save, 300);
     }
 
+    // Copy/paste helpers for IH
+    function copyIhSelection() {
+        // Prefer multi-select; else single node
+        const ids = (selectedNodeIds && selectedNodeIds.size > 0)
+            ? Array.from(selectedNodeIds)
+            : (selectedNodeId ? [selectedNodeId] : []);
+        if (!ids.length) return;
+        const idSet = new Set(ids);
+        const nodes = state.nodes.filter(n => idSet.has(n.id)).map(n => JSON.parse(JSON.stringify(n)));
+        const edges = state.edges.filter(e => idSet.has(e.from) && idSet.has(e.to)).map(e => ({ from: e.from, to: e.to }));
+        ihClipboard = { type: 'nodes', nodes, edges };
+    }
+
+    function pasteIhSelection() {
+        if (!ihClipboard || ihClipboard.type !== 'nodes' || !Array.isArray(ihClipboard.nodes)) return;
+        // Record state for undo
+        pushState();
+        const idMap = new Map();
+        const newIds = [];
+        // Paste nodes with slight offset and snapping
+        ihClipboard.nodes.forEach(base => {
+            const newId = genId();
+            idMap.set(base.id, newId);
+            newIds.push(newId);
+            // Offset by 20px and snap similar to creation/drag
+            let nx = snap(base.x + 20);
+            nx = snapToColumnLeft(nx, NODE_W);
+            const nodeH = NODE_H;
+            const centerY = (base.y + 20) + Math.round(nodeH / 2);
+            const snappedCenterY = Math.round(centerY / ROW_SPACING) * ROW_SPACING;
+            const clamped = clampToCanvas(nx, snappedCenterY - Math.round(nodeH / 2));
+            const copy = { id: newId, x: clamped.x, y: clamped.y, text: base.text || '', color: base.color || 'white' };
+            state.nodes.push(copy);
+        });
+        // Paste only edges fully inside the copied set
+        if (Array.isArray(ihClipboard.edges) && ihClipboard.edges.length) {
+            ihClipboard.edges.forEach(base => {
+                const fromNew = idMap.get(base.from);
+                const toNew = idMap.get(base.to);
+                if (fromNew && toNew) {
+                    // Avoid duplicate edges
+                    if (!state.edges.some(e => e.from === fromNew && e.to === toNew)) {
+                        state.edges.push({ from: fromNew, to: toNew });
+                    }
+                }
+            });
+        }
+        // Select newly pasted nodes
+        selectedNodeId = null;
+        selectedNodeIds.clear();
+        newIds.forEach(id => selectedNodeIds.add(id));
+        setSelectedEdge(null);
+        renderAll();
+        scheduleSave();
+    }
+
     // Load and render
     load();
     applyBoardName();
-    // Seed a default node for a non-empty starting state
-    if (!state.nodes || state.nodes.length === 0) {
-        const id = 'n' + Date.now();
-        const node = { id, x: snap(240), y: snap(160), text: 'Start' };
-        state.nodes.push(node);
-        scheduleSave();
-    }
+    // No default nodes; users click to create
     renderAll();
     updateStatus();
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Zoom: wheel (ctrl/cmd+) and pinch
+    function applyZoom(delta, centerClientX, centerClientY) {
+        const prevZoom = zoom;
+        zoom = Math.min(2.5, Math.max(0.5, zoom * (delta > 0 ? 0.9 : 1.1)));
+        // keep visual focus around pointer by adjusting scroll
+        const rect = canvasWrap.getBoundingClientRect();
+        const cx = centerClientX - rect.left;
+        const cy = centerClientY - rect.top;
+        const scale = zoom / prevZoom;
+        canvasWrap.scrollLeft = (canvasWrap.scrollLeft + cx) * scale - cx;
+        canvasWrap.scrollTop = (canvasWrap.scrollTop + cy) * scale - cy;
+        resizeCanvas();
+    }
+    canvasWrap.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            applyZoom(e.deltaY, e.clientX, e.clientY);
+        }
+    }, { passive: false });
+    // basic pinch zoom
+    let pinchDist = null;
+    canvasWrap.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length === 2) {
+            const [a,b] = e.touches;
+            pinchDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        }
+    }, { passive: true });
+    canvasWrap.addEventListener('touchmove', (e) => {
+        if (e.touches && e.touches.length === 2 && pinchDist) {
+            e.preventDefault();
+            const [a,b] = e.touches;
+            const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+            if (Math.abs(d - pinchDist) > 2) {
+                applyZoom(d < pinchDist ? 1 : -1, (a.clientX + b.clientX)/2, (a.clientY + b.clientY)/2);
+                pinchDist = d;
+            }
+        }
+    }, { passive: false });
+    canvasWrap.addEventListener('touchend', () => { pinchDist = null; }, { passive: true });
+
+    // Undo/redo
+    const undoStack = [];
+    const redoStack = [];
+    function pushState() {
+        try { undoStack.push(JSON.stringify(state)); redoStack.length = 0; } catch {}
+    }
+    function restore(json) {
+        try {
+            const data = JSON.parse(json);
+            if (data && data.nodes && data.edges) {
+                state.nodes = data.nodes; state.edges = data.edges; state.boardName = data.boardName || state.boardName;
+                renderAll(); scheduleSave();
+            }
+        } catch {}
+    }
+    // Wrap mutating ops
+    const _createNodeAt = createNodeAt;
+    createNodeAt = function(x,y,text=''){ pushState(); return _createNodeAt(x,y,text); };
+    // Removed obsolete onNodeDblClick wrapper (no dblclick to create child nodes)
+    const _attachDrag = attachDrag;
+    attachDrag = function(el,node){ _attachDrag(el,node); };
+    // Keyboard (capture phase to avoid interference from other global handlers)
+    const ihKeydownHandler = (e) => {
+        const z = (e.key === 'z' || e.key === 'Z');
+        const yk = (e.key === 'y' || e.key === 'Y');
+        const isFormField = e.target && (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName));
+        const isContentEditable = e.target && (e.target.isContentEditable || (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true'));
+        if ((e.metaKey || e.ctrlKey) && z && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            const snap = undoStack.pop();
+            if (snap) { redoStack.push(JSON.stringify(state)); restore(snap); }
+        } else if (((e.metaKey || e.ctrlKey) && (yk || (z && e.shiftKey)))) {
+            e.preventDefault();
+            e.stopPropagation();
+            const snap = redoStack.pop();
+            if (snap) { undoStack.push(JSON.stringify(state)); restore(snap); }
+        } else if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
+            // Copy selection (nodes or group). Ignore while typing in fields/labels.
+            if (!isEditingLabel && !isFormField && !isContentEditable) {
+                e.preventDefault();
+                e.stopPropagation();
+                copyIhSelection();
+            }
+        } else if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) {
+            // Paste previously copied nodes/group
+            if (!isEditingLabel && !isFormField && !isContentEditable) {
+                e.preventDefault();
+                e.stopPropagation();
+                pasteIhSelection();
+            }
+        } else if ((e.key === 'Delete' || e.key === 'Backspace')) {
+            // Avoid interfering while typing in fields or labels
+            if (!isEditingLabel && !isFormField && !isContentEditable) {
+                if (selectedEdgeKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteSelectedEdge();
+                } else if (selectedNodeId || (selectedNodeIds && selectedNodeIds.size > 0)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Delete group if multi-selected, else single
+                    if (selectedNodeIds && selectedNodeIds.size > 0) {
+                        const ids = new Set(selectedNodeIds);
+                        // record state for undo
+                        pushState();
+                        // delete edges connected to any selected nodes
+                        state.edges = state.edges.filter(e => !(ids.has(e.from) || ids.has(e.to)));
+                        // delete nodes
+                        state.nodes = state.nodes.filter(n => !ids.has(n.id));
+                        selectedNodeIds.clear();
+                        selectedNodeId = null;
+                        renderAll();
+                        scheduleSave();
+                    } else {
+                        deleteSelectedNode();
+                    }
+                }
+            }
+        }
+    };
+    window.addEventListener('keydown', ihKeydownHandler, true);
 }
 
 
@@ -1738,6 +2696,13 @@ function showToast(message, type = 'info', duration = 3000) {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
     }, duration);
+}
+
+// Convenience wrapper for success toasts used across modules
+function showSuccessToast(message) {
+    try {
+        showToast(message, 'success');
+    } catch (e) {}
 }
 
 function getToastIcon(type) {
@@ -3463,9 +4428,10 @@ class JourneyMap {
 
         // Update grid template columns dynamically
         const numColumns = this.journeyData.length;
-        table.style.gridTemplateColumns = `200px repeat(${numColumns}, 200px)`;
+        const colW = 160; // reduced width
+        table.style.gridTemplateColumns = `${colW}px repeat(${numColumns}, ${colW}px)`;
         table.style.gridTemplateRows = 'auto auto auto auto auto auto auto'; // 7 rows: Headers, Stage, Touch Point, Image, Activities, Feelings, Mood Visual, Opportunities
-        table.style.minWidth = `${200 + (numColumns * 200)}px`;
+        table.style.minWidth = `${colW + (numColumns * colW)}px`;
 
 
         // Create column headers for each stage
@@ -11673,8 +12639,28 @@ function setupTocNavigation() {
         }
     });
 
+    // Apply initial active class to TOC based on stored active tab
+    try {
+        const last = localStorage.getItem(getScopedKey(BASE_ACTIVE_TAB_KEY));
+        toc.querySelectorAll('.toc-item, .toc-subitem').forEach(btn => {
+            const t = btn.getAttribute('data-target');
+            btn.classList.toggle('active', t === last);
+        });
+    } catch {}
+
     const activate = (key) => {
         try { localStorage.setItem(getScopedKey(BASE_ACTIVE_TAB_KEY), key); } catch {}
+        // One-time migration: ensure old IH state doesn't hide new empty state
+        if (key === 'information-hierarchy') {
+            try {
+                const MIGR_KEY = getScopedKey('ihMigrated-1');
+                const migrated = localStorage.getItem(MIGR_KEY);
+                if (!migrated) {
+                    // Mark migration complete without wiping existing data
+                    localStorage.setItem(MIGR_KEY, 'true');
+                }
+            } catch {}
+        }
         if (key === 'cover') {
             if (coverMount) coverMount.style.display = 'block';
             if (journeyMount) journeyMount.style.display = 'none';
@@ -11843,29 +12829,25 @@ function setupTocNavigation() {
             if (window.Components && typeof window.Components.renderContentNavbar === 'function') {
                 window.Components.renderContentNavbar('contentNavMount', 'Information Hierarchy');
                 setupContentNavScrollEffect();
-                
-                // Render information hierarchy interface
+                // Always render the editor; it will load from localStorage or IndexedDB and show content if available
                 renderInformationHierarchyInterface();
 
-                // Bind add icon to create a fresh Information Hierarchy board
-                const addIcon = document.getElementById('addColumnBtn');
-                if (addIcon) {
-                    addIcon.addEventListener('click', () => {
+                // Bind dedicated create button for IH
+                const createBtn = document.getElementById('ihCreateBtn');
+                if (createBtn) {
+                    createBtn.addEventListener('click', () => {
                         try { localStorage.removeItem(getScopedKey('ihData')); } catch {}
-                        const ihMount = document.getElementById('informationHierarchyMount');
-                        if (ihMount) ihMount.innerHTML = '';
                         renderInformationHierarchyInterface();
-                        showSuccessToast('Created new Information Hierarchy board');
+                        showSuccessToast('Information Hierarchy created');
                     });
                 }
             }
-            
-            // Update active states for the clicked tab
-            toc.querySelectorAll('[data-target]').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-target') === key) {
-                    btn.classList.add('active');
-                }
+            // Update active states for the clicked tab, including subitems
+            toc.querySelectorAll('.toc-item, .toc-subitem').forEach(btn => {
+                const target = btn.getAttribute('data-target');
+                if (!target) return;
+                if (target === 'information-hierarchy') btn.classList.add('active');
+                else btn.classList.remove('active');
             });
         } else if (key === 'rules') {
             // no-op (tab removed); fall back to journey
@@ -11917,6 +12899,12 @@ function setupTocNavigation() {
             e.preventDefault();
             const target = tab.getAttribute('data-target');
             if (target) {
+                // Update UI first so it reflects immediately
+                toc.querySelectorAll('.toc-item, .toc-subitem').forEach(btn => {
+                    const t = btn.getAttribute('data-target');
+                    btn.classList.toggle('active', t === target);
+                });
+                // Persist and activate views
                 activate(target);
             } else {
                 // For tabs without data-target, show a placeholder message
@@ -11927,12 +12915,15 @@ function setupTocNavigation() {
         });
     });
 
-    // Restore last active tab on load
+    // Restore last active tab on load (default to information-hierarchy if previously selected or none yet)
     try {
         const last = localStorage.getItem(getScopedKey(BASE_ACTIVE_TAB_KEY));
-        if (['cover','journey','as-is-flow','to-be-flow','personas'].includes(last)) activate(last);
-        else activate('journey');
-    } catch { activate('journey'); }
+        if (['cover','journey','as-is-flow','to-be-flow','personas','information-hierarchy'].includes(last)) {
+            activate(last);
+        } else {
+            activate('information-hierarchy');
+        }
+    } catch { activate('information-hierarchy'); }
 }
 function bindFlowNavbarActions() {
     const add = document.getElementById('flowNavAdd');

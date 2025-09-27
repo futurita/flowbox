@@ -21,6 +21,18 @@ window.Components.renderContentNavbar = function renderContentNavbar(mountId, ti
                     </button>
                 </div>
             `;
+        } else if (title === 'Information Hierarchy') {
+            // Dedicated create action for Information Hierarchy
+            leftControlGroup = `
+                <div class="control-group">
+                    <button class="btn btn-secondary icon-only" id="ihCreateBtn" title="Create Information Hierarchy" aria-label="Create Information Hierarchy">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="#333" stroke-width="1.5" fill="none"/>
+                            <path d="M12 8v8M8 12h8" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
         } else {
             leftControlGroup = `
                 <div class="control-group">

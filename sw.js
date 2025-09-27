@@ -1,7 +1,7 @@
 // Service Worker for Flowbox PWA
-const CACHE_NAME = 'flowbox-v1.6.7';
-const STATIC_CACHE_NAME = 'flowbox-static-v1.6.7';
-const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.7';
+const CACHE_NAME = 'flowbox-v1.6.8';
+const STATIC_CACHE_NAME = 'flowbox-static-v1.6.8';
+const DYNAMIC_CACHE_NAME = 'flowbox-dynamic-v1.6.8';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [

@@ -779,21 +779,73 @@ body.sidebar-collapsed .toc { padding-top: 56px; } /* align with 12px top + 40px
 }
 
 /* Information Hierarchy Styles */
-.information-hierarchy-container {
-    background: white;
+.information-hierarchy-container { 
+    background: transparent;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: none;
+    border: 1px solid #e0e0e0;
     margin: 16px 0 0 0;
-    padding: 2rem 40px;
+    padding: 0 0 0 0; /* remove inner padding so margins control spacing */
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+}
+
+/* IH title bar: name on left, bin on right, divider below */
+.information-hierarchy-container .flow-board-title-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.information-hierarchy-container .flow-board-title {
+    margin: 0;
+    padding: 0;
+    text-align: left;
+}
+.information-hierarchy-container #ihDeleteBoardBtn {
+    margin-left: auto;
+}
+
+/* Remove extra inner spacing for the Information Hierarchy canvas */
+.information-hierarchy-container .flow-board-even { padding: 0; margin: 0; }
+.information-hierarchy-container .flow-board { padding: 0; margin: 0; box-shadow: none; }
+.information-hierarchy-container .flow-canvas-wrap { padding-bottom: 0; border-radius: 12px; overflow: hidden; margin-top: -1px; background: transparent; }
+
+/* IA: Ensure nodes (canvas) sit above grid and edges, so boxes are clickable */
+.information-hierarchy-container #ihGrid { z-index: 1 !important; top: 0; left: 0; right: 0; bottom: 0; }
+.information-hierarchy-container #ihEdges { z-index: 2 !important; pointer-events: auto !important; }
+.information-hierarchy-container .flow-edge { cursor: pointer; stroke: #bdbdbd !important; }
+.information-hierarchy-container .flow-edge.selected { stroke: #ef5350 !important; stroke-width: 2.5px !important; }
+.information-hierarchy-container .flow-edges-svg { -webkit-tap-highlight-color: transparent; }
+.information-hierarchy-container #ihCanvas { z-index: 3 !important; pointer-events: auto !important; background: transparent; }
+.information-hierarchy-container #ihCanvasWrap { outline: none; }
+
+/* IH: Live preview edge color */
+.information-hierarchy-container .flow-edge-preview { stroke: #d6d6d6 !important; }
+
+/* IH toolbar removed per simplified interaction */
+
+.information-hierarchy-container .flow-node {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    align-items: flex-start; /* text grows downward, not centered vertically */
+}
+.information-hierarchy-container .flow-node .label {
+    display: block;
+    width: 100%;
 }
 
 .information-hierarchy-content {
     max-width: 800px;
     margin: 0 auto;
 }
+
+/* IH: marquee selection box */
+.ih-marquee { box-sizing: border-box; }
 
 .information-hierarchy-section h3 {
     color: #333;
@@ -1699,7 +1751,7 @@ body.sidebar-collapsed .toc { padding-top: 56px; } /* align with 12px top + 40px
 /* Journey table */
 .journey-table {
     display: grid;
-    grid-template-columns: 200px repeat(10, 200px); /* Labels column + 10 journey columns */
+    grid-template-columns: 160px repeat(10, 160px); /* Labels column + 10 journey columns */
     grid-template-rows: auto auto auto auto auto auto auto; /* 7 rows: Headers, Stage of Journey, Touch Point, Image, Activities, Feelings, Mood Visual, Opportunities */
     min-width: 100%;
     width: max-content; /* Allow horizontal growth */
@@ -3006,9 +3058,9 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
     }
     
     .journey-table {
-        grid-template-columns: 150px repeat(10, 150px);
+        grid-template-columns: 140px repeat(10, 140px);
         grid-template-rows: auto auto auto auto auto auto auto;
-        min-width: 1650px;
+        min-width: 1540px;
         width: max-content;
         margin-left: 0;
         left: 0;
@@ -3350,7 +3402,7 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
 }
 .flow-canvas-wrap { position: relative; min-height: 420px; height: 60vh; overflow: auto; border-radius: 12px; padding-bottom: 72px; }
 .flow-grid { position: absolute; top: 0; left: 0; background: transparent; z-index: 4; }
-.flow-node { position: absolute; min-width: 140px; min-height: 44px; padding: 8px 12px; background: #ffffff; color: #333; border: 1px solid #d0d0d0; border-radius: 10px; box-shadow: none; cursor: default; user-select: none; display: flex; align-items: center; justify-content: center; text-align: center; resize: none; overflow: visible; transition: box-shadow 0.15s ease, transform 0.15s ease; z-index: 6; will-change: transform; backface-visibility: hidden; perspective: 1000px; pointer-events: auto; }
+.flow-node { position: absolute; min-width: 120px; min-height: 40px; padding: 6px 10px; background: #ffffff; color: #333; border: 1px solid #d0d0d0; border-radius: 10px; box-shadow: none; cursor: default; user-select: none; display: flex; align-items: center; justify-content: center; text-align: center; resize: none; overflow: visible; transition: box-shadow 0.15s ease, transform 0.15s ease; z-index: 10; will-change: transform; backface-visibility: hidden; perspective: 1000px; pointer-events: auto; }
 /* Decorative drag handle (no movement) */
 .flow-node .drag-handle { position: absolute; top: -8px; left: -8px; width: 20px; height: 20px; background: rgba(208,208,208,0.8); color: #333; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: grab; z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.15s ease, background 0.15s ease; touch-action: none; pointer-events: auto; }
 .flow-node .drag-handle::before { content: '⋮⋮'; line-height: 1; }
@@ -3473,6 +3525,8 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
     opacity: 0 !important;
     pointer-events: none !important;
 }
+/* Ensure nodes remain clickable while editing */
+.text-editing-mode .flow-node { pointer-events: auto !important; }
 
 /* Connection preview and edges */
 .connection-preview {
@@ -3602,7 +3656,7 @@ body.theme-oled-dark { background-color: #000; color: #eee; }
 /* Hide node scrollbars cross-browser */
 .flow-node::-webkit-scrollbar { display: none; }
 .flow-node { -ms-overflow-style: none; scrollbar-width: none; }
-.flow-node .label { pointer-events: auto; padding: 0 6px; outline: none; white-space: pre-wrap; word-break: break-word; min-height: 16px; cursor: pointer; color: #333; }
+.flow-node .label { pointer-events: auto; padding: 0 6px; outline: none; white-space: pre-wrap; word-break: break-word; min-height: 16px; cursor: text; color: #333; }
 .flow-node .label[contenteditable="true"] { cursor: text; user-select: text; }
 .flow-node .label:empty::before { content: attr(data-placeholder); color: rgba(0,0,0,0.65); }
 .flow-node .label[contenteditable="true"] { cursor: text; user-select: text; }
