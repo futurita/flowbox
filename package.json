@@ -2,6 +2,7 @@
   "name": "flowbox",
   "version": "1.6.0",
   "description": "Flowbox - Design Process Management Tool",
+  "homepage": "landing.html",
   "main": "index.html",
   "scripts": {
     "start": "npx serve . -p 3000",

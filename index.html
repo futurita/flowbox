@@ -34,7 +34,7 @@
     <meta name="apple-mobile-web-app-title" content="Flowbox">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="msapplication-TileColor" content="#000000">
-    <meta name="msapplication-TileImage" content="icons/icon-512x512.png">
+    <meta name="msapplication-TileImage" content="icons/app_icon.png">
     <meta name="msapplication-tap-highlight" content="no">
     
     <!-- PWA Manifest (only load if not using file:// protocol) -->
@@ -48,11 +48,11 @@
     </script>
     
     <!-- Icons for different platforms -->
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-192x192.png">
+    <link rel="icon" href="icons/flowbox_app_icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/app_icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/app_icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/app_icon.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="icons/app_icon.png">
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css?v=1.7">
@@ -345,6 +345,13 @@
         }
         #splashScreen.fade-out { opacity: 0; pointer-events: none; }
         #splashScreen .splash-logo { width: 80px; height: 80px; }
+        #splashScreen .loading { width: 240px; margin-top: 6px; }
+        #splashScreen .loading-track {
+            height: 4px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.25);
+        }
+        #splashScreen .loading-fill {
+            height: 100%; width: 0%; background: #ffffff; border-radius: 999px; transition: width 140ms ease;
+        }
         #splashScreen .splash-tagline {
             margin: 0;
             font-family: "Sarabun", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -359,8 +366,11 @@
 <body>
     <!-- Minimal splash screen (injected only if not recently shown) -->
     <div id="splashScreen" aria-hidden="true" style="display:none">
-        <img src="logo.svg" alt="Flowbox" class="splash-logo" />
+        <img src="icons/flowbox_app_icon.svg" alt="Flowbox" class="splash-logo" />
         <p class="splash-tagline">Flowbox — Design flows, delivered.</p>
+        <div class="loading" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="loading-track"><div class="loading-fill" id="splashLoadingFill"></div></div>
+        </div>
     </div>
     <!-- Drag region for installed PWA when using window-controls-overlay -->
     <div id="appDragArea" class="app-drag-area" hidden></div>
@@ -425,7 +435,7 @@
         <aside class="sidebar" id="projectSidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo" title="Flowbox" aria-label="Flowbox">
-                    <img src="logo.svg" width="24" height="24" alt="Flowbox logo" />
+                    <img src="icons/flowbox_app_icon.svg" width="24" height="24" alt="Flowbox logo" />
                 </div>
                 <div class="sidebar-actions" style="display:flex; gap:0.5rem;">
                 <button class="btn btn-secondary icon-only" id="addProjectBtn" title="Add project" aria-label="Add project">
@@ -971,6 +981,10 @@
             var ONE_DAY_MS = 24 * 60 * 60 * 1000;
             function shouldShowSplash() {
                 try {
+                    var params = new URLSearchParams(window.location.search || '');
+                    if (params.has('forceSplash') || params.get('splash') === '1') {
+                        return true;
+                    }
                     var last = parseInt(localStorage.getItem(SPLASH_KEY) || '0', 10);
                     return !last || (Date.now() - last) > ONE_DAY_MS;
                 } catch (e) { return true; }
@@ -988,9 +1002,23 @@
                 }
                 // display and auto-hide
                 el.style.display = 'flex';
+                // Simulate sleek percentage progress 0 -> 100%
+                try {
+                    var fill = document.getElementById('splashLoadingFill');
+                    var nowVal = 0;
+                    var timer = setInterval(function() {
+                        nowVal += Math.floor(Math.random() * 12) + 4; // +4..+15
+                        if (nowVal > 100) nowVal = 100;
+                        if (fill) fill.style.width = nowVal + '%';
+                        el.setAttribute('aria-valuenow', String(nowVal));
+                        if (nowVal === 100) {
+                            clearInterval(timer);
+                            setTimeout(hideSplash, 250);
+                        }
+                    }, 140);
+                } catch (e) {}
                 markSplashShown();
-                // hide after 3s
-                setTimeout(function hideSplash() {
+                function hideSplash() {
                     try {
                         el.classList.add('fade-out');
                         el.addEventListener('transitionend', function onEnd() {
@@ -998,7 +1026,7 @@
                             if (el && el.parentNode) { el.parentNode.removeChild(el); }
                         });
                     } catch (e) {}
-                }, 3000);
+                }
             }
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
                 showSplashIfNeeded();
