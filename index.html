@@ -811,7 +811,7 @@
                                                 <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">install_mobile</span> Install Flowbox App
                                             </button>
                                             <button class="btn btn-secondary" id="openAppBtn" style="display: none;">
-                                                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">open_in_new</span> Open as App
+                                                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">open_in_new</span> Open Process
                                             </button>
                                         </div>
                                     </div>
@@ -1419,7 +1419,7 @@
                 const { isMac, isSafari } = getBrowserInfo();
 
                 if (isStandalone) {
-                    statusText.textContent = 'Installed and running as app';
+                    statusText.textContent = 'Installed';
                     statusIcon.textContent = '';
                     if (statusIcon && statusIcon.classList) statusIcon.classList.add('material-icons-outlined');
                     if (statusIcon) statusIcon.textContent = 'check_circle';
@@ -1427,7 +1427,7 @@
                     installAppBtn.style.display = 'none';
                     openAppBtn.style.display = 'inline-block';
                 } else if (canInstall && !(isMac && isSafari)) {
-                    statusText.textContent = 'Ready to install as app';
+                    statusText.textContent = 'Ready to install';
                     statusIcon.textContent = '';
                     if (statusIcon && statusIcon.classList) statusIcon.classList.add('material-icons-outlined');
                     if (statusIcon) statusIcon.textContent = 'install_mobile';
