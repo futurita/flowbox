@@ -92,6 +92,16 @@
             align-items: center;
             gap: 10px;
         }
+        /* Mobile nav toggle */
+        .nav-toggle {
+            display: none;
+            background: transparent;
+            border: 0;
+            padding: 8px;
+            margin: -8px 0 -8px -8px;
+            cursor: pointer;
+        }
+        .nav-toggle svg { width: 24px; height: 24px; }
         .btn {
             appearance: none;
             border: 1px solid rgba(0,0,0,0.12);
@@ -178,6 +188,19 @@
             .features-grid { grid-template-columns: 1fr; }
         }
 
+        /* Responsive nav behavior */
+        @media (max-width: 720px) {
+            .nav-inner { gap: 8px; }
+            .nav-links { display: none; }
+            .nav-cta { display: none; }
+            .nav-toggle { display: inline-flex; }
+            .navbar.open .nav-links,
+            .navbar.open .nav-cta { display: flex; }
+            .navbar.open .nav-inner { flex-wrap: wrap; align-items: flex-start; }
+            .navbar.open .nav-links { width: 100%; order: 3; gap: 14px; padding: 8px 0 0; }
+            .navbar.open .nav-cta { width: 100%; order: 2; justify-content: flex-end; padding-top: 8px; }
+        }
+
         .cta {
             text-align: center;
             background: linear-gradient(180deg, #ffffff, #f5f5f7);
@@ -198,6 +221,13 @@
                 <img src="icons/flowbox_app_icon.svg" alt="Flowbox logo">
                 <span>Flowbox</span>
             </a>
+            <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
             <nav class="nav-links" aria-label="Primary">
                 <a href="#product">Product</a>
                 <a href="#features">Features</a>
@@ -309,6 +339,26 @@
 
     <script>
         document.getElementById('year').textContent = new Date().getFullYear();
+        // Mobile nav toggle logic
+        (function() {
+            var navbar = document.querySelector('.navbar');
+            var toggle = document.querySelector('.nav-toggle');
+            if (!navbar || !toggle) return;
+            toggle.addEventListener('click', function() {
+                var isOpen = navbar.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', String(isOpen));
+            });
+            // Close on nav link click (mobile)
+            var links = document.querySelectorAll('.nav-links a');
+            links.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (navbar.classList.contains('open')) {
+                        navbar.classList.remove('open');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            });
+        })();
     </script>
 </body>
 </html>
