@@ -1,3 +1,167 @@
+// ===== KICKOFF (Design Objective & Scope) =====
+function getDefaultKickoffData() {
+    return {
+        title: '',
+        background: '',
+        problem: '',
+        objectives: '',
+        values: '',
+        scope: '',
+        inScope: '',
+        outOfScope: '',
+        audience: '',
+        audienceNeeds: '',
+        requirements: '',
+        technical: '',
+        constraints: '',
+        assumptions: '',
+        success: '',
+        stakeholders: '',
+        responsibilities: '',
+        image: '',
+        images: {}
+    };
+}
+
+function loadKickoffData() {
+    try {
+        const raw = localStorage.getItem(getScopedKey(BASE_KICKOFF_KEY));
+        if (!raw) return getDefaultKickoffData();
+        const parsed = JSON.parse(raw);
+        const merged = { ...getDefaultKickoffData(), ...(parsed || {}) };
+        // Backward compatibility: migrate legacy single image to background if present
+        if (merged.image && !merged.images.background) {
+            merged.images.background = merged.image;
+        }
+        if (!merged.images || typeof merged.images !== 'object') merged.images = {};
+        return merged;
+    } catch {
+        return getDefaultKickoffData();
+    }
+}
+
+function saveKickoffData(data) {
+    try {
+        const payload = { ...getDefaultKickoffData(), ...(data || {}) };
+        localStorage.setItem(getScopedKey(BASE_KICKOFF_KEY), JSON.stringify(payload));
+        updateStorageUsage();
+    } catch {}
+}
+
+function renderKickoffInterface() {
+    const mount = document.getElementById('kickoffMount');
+    if (!mount) return;
+    const data = loadKickoffData();
+    const fields = [
+        { key: 'background', label: 'Project Background / Context', ph: 'Overall project background' },
+        { key: 'problem', label: 'Problem / Need', ph: 'What problem or need drives this design?' },
+        { key: 'objectives', label: 'Design Objectives', ph: 'Primary objectives (e.g., improve UX, reduce cost, express brand)' },
+        { key: 'values', label: 'Design Value', ph: 'Value the design must create' },
+        { key: 'scope', label: 'Scope of Design', ph: 'Coverage (e.g., app UX/UI, packaging, logo, etc.)' },
+        { key: 'inScope', label: 'In Scope', ph: 'Items included in scope' },
+        { key: 'outOfScope', label: 'Out of Scope', ph: 'Items explicitly excluded' },
+        { key: 'audience', label: 'Target Audience / User Profile', ph: 'Primary users or audience' },
+        { key: 'audienceNeeds', label: 'Audience Needs / Constraints', ph: 'Behaviors, needs, limitations of target audience' },
+        { key: 'requirements', label: 'Design Requirements', ph: 'Standards or requirements (size, color, platform)' },
+        { key: 'technical', label: 'Technical / Regulatory / Branding', ph: 'Technical factors, regulations, branding constraints' },
+        { key: 'constraints', label: 'Constraints', ph: 'Time, budget, tools, resources' },
+        { key: 'assumptions', label: 'Assumptions', ph: 'Assumptions informing the design' },
+        { key: 'success', label: 'Success Criteria / KPIs', ph: 'How success will be measured (usability score, conversion rate, brand recognition)' },
+        { key: 'stakeholders', label: 'Stakeholders', ph: 'Key stakeholders (design, marketing, executives, etc.)' },
+        { key: 'responsibilities', label: 'Responsibilities', ph: 'Roles and responsibilities' }
+    ];
+
+    const itemsHtml = fields.map(f => {
+        return `
+            <div class="ko-block ko-field" data-key="${f.key}">
+                <div class="ko-heading">${f.label}</div>
+                <textarea class="ko-paragraph" id="ko_${f.key}" rows="4" placeholder="${f.ph}"></textarea>
+            </div>
+        `;
+    }).join('');
+
+    mount.innerHTML = `
+        <section class="kickoff">
+            <div class="panel kickoff-form">
+                <div class="ko-page">
+                    <h1 class="ko-title"><input id="ko_title" class="ko-title-input" placeholder="Untitled"></h1>
+                    <div class="ko-sections">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            </div>
+        </section>
+    `;
+
+    // Wire inputs
+    const dDebounce = (fn, wait = 400) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
+    const autoResize = (el) => { try { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; } catch {} };
+    const textKeys = ['background','problem','objectives','values','scope','inScope','outOfScope','audience','audienceNeeds','requirements','technical','constraints','assumptions','success','stakeholders','responsibilities'];
+    textKeys.forEach(key => {
+        const el = document.getElementById(`ko_${key}`);
+        if (!el) return;
+        // Initialize value from saved data
+        try { el.value = data[key] || ''; autoResize(el); } catch {}
+        const save = dDebounce(() => {
+            const d = loadKickoffData();
+            d[key] = el.value;
+            saveKickoffData(d);
+        });
+        el.addEventListener('input', () => { autoResize(el); save(); });
+    });
+
+    // Title wiring
+    const titleEl = document.getElementById('ko_title');
+    if (titleEl) {
+        try { titleEl.value = data.title || ''; } catch {}
+        const saveTitle = dDebounce(() => {
+            const d = loadKickoffData();
+            d.title = titleEl.value;
+            saveKickoffData(d);
+        });
+        titleEl.addEventListener('input', () => { saveTitle(); });
+    }
+
+    // Image upload handling
+    const validateImageKO = (file) => {
+        const allowed = ['image/jpeg','image/jpg','image/png','image/gif','image/webp'];
+        const maxSize = 5 * 1024 * 1024;
+        if (!file || !allowed.includes(file.type)) return false;
+        if (file.size > maxSize) { alert('Max 5MB'); return false; }
+        return true;
+    };
+    const compressKO = (file) => compressImageFile(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85, format: 'image/jpeg' });
+
+    // Seamless drag-and-drop on each field (no visible drop zone)
+    const wireDnDForKey = (key, label) => {
+        const field = document.querySelector(`.ko-field[data-key="${key}"]`);
+        if (!field) return;
+        const setImage = (base64) => {
+            const d = loadKickoffData();
+            if (!d.images) d.images = {};
+            d.images[key] = base64;
+            saveKickoffData(d);
+            try { showSuccessToast(`Image added to ${label}`); } catch {}
+        };
+        const onDragOver = (e) => { e.preventDefault(); field.classList.add('dragover'); };
+        const onDragLeave = (e) => { e.preventDefault(); field.classList.remove('dragover'); };
+        const onDrop = (e) => {
+            e.preventDefault(); field.classList.remove('dragover');
+            const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!validateImageKO(file)) return;
+            compressKO(file).then(setImage).catch(() => {
+                const reader = new FileReader();
+                reader.onload = () => setImage(reader.result);
+                reader.readAsDataURL(file);
+            });
+        };
+        ['dragover','dragenter'].forEach(evt => { field.addEventListener(evt, onDragOver); });
+        ['dragleave','dragend'].forEach(evt => { field.addEventListener(evt, onDragLeave); });
+        field.addEventListener('drop', onDrop);
+    };
+
+    fields.forEach(f => wireDnDForKey(f.key, f.label));
+}
 // Data storage helpers (localStorage-backed) with per-project scoping
 const PROJECTS_KEY = 'jmProjects';
 const CURRENT_PROJECT_KEY = 'jmCurrentProjectId';
@@ -9,6 +173,7 @@ const BASE_SETTINGS_KEY = 'appSettings';
 const BASE_FLOW_KEY = 'userFlowData';
 const BASE_FLOW_VERSIONS_KEY = 'flowVersions';
 const BASE_PERSONAS_KEY = 'personasData';
+const BASE_KICKOFF_KEY = 'kickoffData';
 const BASE_ACTIVE_TAB_KEY = 'activeTab';
 
 // ===== Device storage (OPFS) sync for installed PWA =====
@@ -243,7 +408,8 @@ function buildExportPayload() {
         BASE_FLOW_KEY,
         BASE_FLOW_VERSIONS_KEY,
         BASE_ACTIVE_TAB_KEY,
-        BASE_PERSONAS_KEY
+        BASE_PERSONAS_KEY,
+        BASE_KICKOFF_KEY
     ];
     const storage = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -295,7 +461,7 @@ async function importAllAppDataFromDevice() {
             if (key === PROJECTS_KEY || key === CURRENT_PROJECT_KEY || key.startsWith(BASE_STORAGE_KEY + ':') ||
                 key.startsWith(BASE_VERSIONS_KEY + ':') || key.startsWith(BASE_CHANGES_KEY + ':') ||
                 key.startsWith(BASE_COVER_KEY + ':') || key.startsWith(BASE_SETTINGS_KEY + ':') ||
-                key.startsWith(BASE_FLOW_KEY + ':') || key.startsWith(BASE_FLOW_VERSIONS_KEY + ':') || key.startsWith(BASE_ACTIVE_TAB_KEY + ':') || key.startsWith(BASE_PERSONAS_KEY + ':')) {
+                key.startsWith(BASE_FLOW_KEY + ':') || key.startsWith(BASE_FLOW_VERSIONS_KEY + ':') || key.startsWith(BASE_ACTIVE_TAB_KEY + ':') || key.startsWith(BASE_PERSONAS_KEY + ':') || key.startsWith(BASE_KICKOFF_KEY + ':')) {
                 keysToRemove.push(key);
             }
         }
@@ -390,6 +556,8 @@ function ensureProjectsInitialized() {
         localStorage.setItem(getScopedKey(BASE_FLOW_KEY, id), JSON.stringify({ nodes: [], sections: [], title: 'Flow 1' }));
         // initialize default personas data (empty array for true empty state)
         localStorage.setItem(getScopedKey(BASE_PERSONAS_KEY, id), JSON.stringify([]));
+        // initialize default kickoff data
+        localStorage.setItem(getScopedKey(BASE_KICKOFF_KEY, id), JSON.stringify(getDefaultKickoffData()));
     } else if (!getCurrentProjectId()) {
         setCurrentProjectId(projects[0].id);
     }
@@ -12628,12 +12796,13 @@ function setupTocNavigation() {
     const coverMount = document.getElementById('coverMount');
     const journeyMount = document.getElementById('journeyMount');
     const flowMount = document.getElementById('flowMount');
+    const kickoffMount = document.getElementById('kickoffMount');
     const personasMount = document.getElementById('personasMount');
     const informationHierarchyMount = document.getElementById('informationHierarchyMount');
     const contentNav = document.getElementById('contentNavMount');
 
     // Disable all TOC items except the allowed ones
-    const allowedTargets = new Set(['cover', 'personas', 'as-is-flow', 'to-be-flow', 'journey', 'information-hierarchy']);
+    const allowedTargets = new Set(['cover', 'personas', 'as-is-flow', 'to-be-flow', 'journey', 'information-hierarchy', 'kickoff']);
     toc.querySelectorAll('.toc-item, .toc-subitem').forEach((btn) => {
         const target = btn.getAttribute('data-target');
         const isAllowed = target && allowedTargets.has(target);
@@ -12698,6 +12867,7 @@ function setupTocNavigation() {
             if (coverMount) coverMount.style.display = 'none';
             if (journeyMount) journeyMount.style.display = 'block';
             if (flowMount) flowMount.style.display = 'none';
+            if (kickoffMount) kickoffMount.style.display = 'none';
             if (personasMount) personasMount.style.display = 'none';
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
             if (contentNav) contentNav.style.display = 'block';
@@ -12725,6 +12895,7 @@ function setupTocNavigation() {
             if (coverMount) coverMount.style.display = 'none';
             if (journeyMount) journeyMount.style.display = 'none';
             if (flowMount) flowMount.style.display = 'block';
+            if (kickoffMount) kickoffMount.style.display = 'none';
             if (personasMount) personasMount.style.display = 'none';
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
             if (contentNav) contentNav.style.display = 'block';
@@ -12797,6 +12968,7 @@ function setupTocNavigation() {
             if (coverMount) coverMount.style.display = 'none';
             if (journeyMount) journeyMount.style.display = 'none';
             if (flowMount) flowMount.style.display = 'none';
+            if (kickoffMount) kickoffMount.style.display = 'none';
             if (personasMount) personasMount.style.display = 'block';
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
             if (contentNav) contentNav.style.display = 'block';
@@ -12831,6 +13003,7 @@ function setupTocNavigation() {
             if (coverMount) coverMount.style.display = 'none';
             if (journeyMount) journeyMount.style.display = 'none';
             if (flowMount) flowMount.style.display = 'none';
+            if (kickoffMount) kickoffMount.style.display = 'none';
             if (personasMount) personasMount.style.display = 'none';
             if (informationHierarchyMount) informationHierarchyMount.style.display = 'block';
             if (contentNav) contentNav.style.display = 'block';
@@ -12857,6 +13030,23 @@ function setupTocNavigation() {
                 if (!target) return;
                 if (target === 'information-hierarchy') btn.classList.add('active');
                 else btn.classList.remove('active');
+            });
+        } else if (key === 'kickoff') {
+            if (coverMount) coverMount.style.display = 'none';
+            if (journeyMount) journeyMount.style.display = 'none';
+            if (flowMount) flowMount.style.display = 'none';
+            if (kickoffMount) kickoffMount.style.display = 'block';
+            if (personasMount) personasMount.style.display = 'none';
+            if (informationHierarchyMount) informationHierarchyMount.style.display = 'none';
+            if (contentNav) contentNav.style.display = 'block';
+            if (window.Components && typeof window.Components.renderContentNavbar === 'function') {
+                window.Components.renderContentNavbar('contentNavMount', 'Design Objectives & Scope');
+                setupContentNavScrollEffect();
+            }
+            renderKickoffInterface();
+            // Update active states
+            toc.querySelectorAll('[data-target]').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-target') === 'kickoff');
             });
         } else if (key === 'rules') {
             // no-op (tab removed); fall back to journey
